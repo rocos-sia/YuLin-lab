@@ -16,7 +16,10 @@ def huofu_circle(img,out):
     #13 14
     # circles = cv.HoughCircles(img, cv.HOUGH_GRADIENT, 2, 300, param1=300, param2=80, minRadius=350,maxRadius=400)
     #205
-    circles = cv.HoughCircles(img, cv.HOUGH_GRADIENT,2, 150,param1=350, param2=150, minRadius=60,maxRadius=200)
+    # 
+    #30
+    circles = cv.HoughCircles(img, cv.HOUGH_GRADIENT,2, 200,param1=250, param2=110, minRadius=0,maxRadius=100)
+#参数1：输入图像，参数二：方法，只有这个，参数三：累加器图像的分辨率。参数三：两个不同圆之间的最小距离。参数四：param1为用于Canny的
     #返回值为圆心，半径
     circles1 = np.uint16(np.around(circles))
     # print("1")
@@ -61,13 +64,13 @@ def theta_solve(min_circle_point,min_circle_point1,max_circle_point):
     return theta*2
 if __name__ == '__main__':
     #0图和2图
-    circles=huofu_circle("00.jpg", "0.jpg")
-    circles1=huofu_circle("02.jpg", "2.jpg")
-
+    circles=huofu_circle("32.jpg", "32_1.jpg")
+    circles1=huofu_circle("31.jpg", "31_1.jpg")
+    print(circles)
     
     min_circle_point=np.array(circles[0,1,:])
-    min_circle_point1=np.array(circles1[0,0,:])
-    max_circle_point=(np.array(circles[0,0,:])+np.array(circles1[0,1,:]))/2
+    min_circle_point1=np.array(circles1[0,1,:])
+    max_circle_point=(np.array(circles[0,0,:])+np.array(circles1[0,0,:]))/2
 
     theta=theta_solve(min_circle_point, min_circle_point1, max_circle_point)
     print(theta)
