@@ -4,11 +4,12 @@ roslib.load_manifest('robotiq_2f_gripper_control')
 from robotiq_2f_gripper_control.msg import _Robotiq2FGripper_robot_output as outputMsg
 from aruco import *
 from tube_motor import motor
-
+import threading
 # 新松
 # sys.path.append('gen_py')
 # sys.path.append('lib')
 # from DucoCobot import DucoCobot
+from thrift import Thrift
 
 # from thrift.transport import TSocket
 # from thrift.transport import TTransport
@@ -65,9 +66,9 @@ def robotiq(ACT, GTO, PR, ATR, SP, FR):
     sleep(2)
 
 
-def key(key_open, dist, force):
+def key(mid, key_open, force):
+    ret = duco_cobot.movel(mid, 0.4, 0.2, 0, [], "", "", True)
     ret = duco_cobot.movel(key_open, 0.4, 0.2, 0, [], "", "", True)
-    # duco_cobot.tcp_move([0, 0, dist, 0, 0, 0], 0.2, 0.2, 0, True)
     print("pose_key_open", ret)
     # 力控按键
     duco_cobot.fc_config([False, False, True, False, False, False], [0, 0, force, 0, 0, 0],
@@ -93,7 +94,7 @@ def key(key_open, dist, force):
     duco_cobot.fc_wait_logic([1, 0, 2])
     duco_cobot.fc_move()
     duco_cobot.fc_stop()
-    duco_cobot.movel(key_open, 0.4, 0.2, 0, [], "", "", True)
+    duco_cobot.movel(mid, 0.4, 0.2, 0, [], "", "", True)
 
 
 def get_T(pose1, pose2):
@@ -532,11 +533,11 @@ class getsample(object):
         robotiq(1, 1, 255, 0, 100, 50)
         motor.motor_position(-2000)
         # 识别aruco
-        rospy.set_param("/aruco_single/marker_size", 0.129)
+        rospy.set_param("/aruco_single/marker_size", 0.130)
         duco_cobot.movej(self.pose_aruco2_j, 40, 20, 0, True)
         sleep(0.5)
         aruco.mark()
-        rospy.set_param("/aruco_single/marker_size", 0.149)
+        rospy.set_param("/aruco_single/marker_size", 0.150)
         # 计算示教点
         self.pose_aruco2 = duco_cobot.get_tcp_pose()
         self.getA1 = get_t(self.pose_aruco2, self.getA1)
@@ -668,29 +669,71 @@ class getsample(object):
 class centrifuge(object):
     def __init__(self):
         # 旋转矩阵
-        self.key_open = np.array([[0.88812738, -0.45794297, -0.03896145, 0.06287588],
-                                  [0.41193665, 0.83075479, -0.37437238, 0.22213659],
-                                  [0.20380861, 0.31644071, 0.92645957, 0.04626311],
-                                  [0, 0, 0, 1]])  # 开盖
+        self.key_mid = np.array([[0.88812738, -0.45794297, -0.03896145, 0.06287588],
+                                 [0.41193665, 0.83075479, -0.37437238, 0.22213659],
+                                 [0.20380861, 0.31644071, 0.92645957, 0.04626311],
+                                 [0, 0, 0, 1]])  # 开盖
+        self.key_open = np.array([[0.88826375, -0.45770228, -0.0386799, 0.06150703],
+                                  [0.41176459, 0.83076436, -0.37454038, 0.18800396],
+                                  [0.20356187, 0.31676363, 0.92640346, 0.12834574],
+                                  [0., 0., 0., 1.]])
         self.key_start = np.array([])  # 启动离心机
-        self.axis = np.array([[0.02845407, -0.99952615, 0.011741, -0.10179548],
-                              [0.9994615, 0.02864034, 0.01601378, -0.17848992],
-                              [-0.01634246, 0.01127902, 0.99980283, 0.13430834],
+        self.axis = np.array([[0.00521612, - 0.9999716, - 0.00543908, - 0.09862462],
+                              [0.99987261, 0.0051334, 0.01511309, - 0.17843551],
+                              [-0.01508474, - 0.00551722, 0.999871, 0.13328981],
                               [0., 0., 0., 1.]])  # 转子轴心
-        # 取放试管点
-        self.getA = np.array([[0.08670534, -0.85263, 0.51527106, -0.28070549],
-                              [0.99620706, 0.07040118, -0.05113874, -0.15647593],
-                              [0.00732673, 0.51775067, 0.85550018, 0.04193006],
-                              [0., 0., 0., 1.]])
-        self.getB = np.array([[-0.79930289, -0.33028191, -0.50202464, 0.10769505],
-                              [0.60076288, -0.41958753, -0.68046327, 0.10479884],
-                              [0.01410143, -0.84549403, 0.53379864, 0.1884626],
-                              [0., 0., 0., 1.]])
-        self.putA = self.getA
-        self.putB = np.array([[-0.79898651, -0.33113412, -0.50196687, 0.00604547],
-                              [0.60115704, -0.41873701, -0.68063905, -0.02848487],
-                              [0.01519071, -0.84558235, 0.53362884, 0.11008111],
-                              [0., 0., 0., 1.]])
+
+        # 取试管点
+        self.getA1 = [[0.54681881, -0.72902678, 0.41171488, -0.2117069],
+                      [0.83680231, 0.49197752, -0.2402499, -0.10816282],
+                      [-0.02740585, 0.47589713, 0.87907385, 0.09669075],
+                      [0., 0., 0., 1.]]
+        self.getA2 = [[0.98422844, -0.17686438, 0.00365717, -0.09989824],
+                      [0.15307185, 0.84109892, -0.51876933, -0.03113121],
+                      [0.08867577, 0.51114733, 0.85490643, 0.10509282],
+                      [0., 0., 0., 1.]]
+        self.getA3 = [[0.43028277, 0.78788146, -0.4405673, 0.02186218],
+                      [-0.90173569, 0.35267199, -0.24999044, -0.10778585],
+                      [-0.04158708, 0.50484184, 0.86220951, 0.1029053],
+                      [0., 0., 0., 1.]]
+        self.getB1 = [[-5.14426537e-01, -4.53653699e-01, -7.27711248e-01, 1.98808449e-01],
+                      [8.57032445e-01, -3.01015889e-01, -4.18192328e-01, -8.39373094e-04],
+                      [-2.93381517e-02, -8.38801381e-01, 5.43646500e-01, 1.85040799e-01],
+                      [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 1.00000000e+00]]
+        self.getB2 = [[-9.99939975e-01, 6.07346561e-04, -1.09397501e-02, -9.68663093e-02],
+                      [9.03484613e-03, -5.19134804e-01, -8.54644620e-01, 1.78197944e-01],
+                      [-6.19827048e-03, -8.54692159e-01, 5.19098155e-01, 1.93464804e-01],
+                      [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 1.00000000e+00]]
+        self.getB3 = [[-0.43805703, 0.48811838, 0.75488177, -0.41103515],
+                      [-0.89888767, -0.2475069, -0.36158165, -0.02345966],
+                      [0.0103438, -0.8369473, 0.54718574, 0.18644897],
+                      [0., 0., 0., 1.]]
+        # 放试管点
+        self.putA1 = [[0.54682881, -0.72902992, 0.41169603, -0.25349789],
+                      [0.83679598, 0.49198788, -0.24025072, -0.08377766],
+                      [-0.0273995, 0.4758816, 0.87908246, 0.00746794],
+                      [0., 0., 0., 1.]]
+        self.putA2 = [[0.98422265, -0.1768969, 0.00364037, -0.1002888],
+                      [0.15308461, 0.84105825, -0.5188315, 0.02665626],
+                      [0.08871792, 0.511203, 0.85486877, 0.00987585],
+                      [0., 0., 0., 1.]]
+        self.putA3 = [[0.43029389, 0.78786976, -0.44057736, 0.07009138],
+                      [-0.90173077, 0.35268222, -0.24999375, -0.08042695],
+                      [-0.04157871, 0.50485295, 0.8622034, 0.00853321],
+                      [0., 0., 0., 1.]]
+        self.putB1 = [[-0.51442255, -0.45366181, -0.72770901, 0.05361048],
+                      [0.85703541, -0.30100133, -0.41819674, -0.09071073],
+                      [-0.02932149, -0.83880222, 0.5436461, 0.10548989],
+                      [0., 0., 0., 1.]]
+        self.putB2 = [[-9.99939483e-01, 5.93995552e-04, -1.09853431e-02, -9.79013150e-02],
+                      [9.08031159e-03, -5.19194416e-01, -8.54607926e-01, 1.18587039e-02],
+                      [-6.21116208e-03, -8.54655957e-01, 5.19157602e-01, 1.12345144e-01],
+                      [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 1.00000000e+00]]
+        self.putB3 = [[-0.43806353, 0.48807144, 0.75490835, -0.25783287],
+                      [-0.89888309, -0.24760279, -0.36152739, -0.09902313],
+                      [0.01046622, -0.83694631, 0.54718491, 0.10802555],
+                      [0., 0., 0., 1.]]
+
         # 中间点
         self.put_middleA = []
         self.get_middleA = []
@@ -700,73 +743,140 @@ class centrifuge(object):
                                      [0.01453498, -0.99975469, 0.01671195, 0.07029574],
                                      [0., 0., 0., 1.]])
         # 关门点
-        self.close_door1 = np.array([[0.99907925, -0.04256267, -0.00539094, -0.15217543],
-                                     [0.0307517, 0.79806095, -0.60179154, -0.09484748],
-                                     [0.02991616, 0.60107166, 0.79863501, -0.36161365],
+        self.close_door0 = [[0.9999243, -0.0049054, 0.01128388, -0.14780709],
+                            [0.01054562, 0.81413732, -0.58057662, 0.01879157],
+                            [-0.00633867, 0.58065167, 0.81412742, -0.29472134],
+                            [0., 0., 0., 1.]]
+        self.close_door1 = np.array([[0.99992339, -0.00493678, 0.0113512, -0.14286774],
+                                     [0.01061016, 0.8141464, -0.58056271, -0.14728529],
+                                     [-0.00637543, 0.58063867, 0.81413641, -0.29225329],
                                      [0., 0., 0., 1.]])
         self.close_door3 = np.array([[0.99959752, -0.02304766, 0.01654071, -0.14592057],
                                      [0.022821, 0.99964482, 0.01376344, -0.14525979],
                                      [-0.01685205, -0.01338042, 0.99976846, -0.13248836],
                                      [0., 0., 0., 1.]])
         # 看aruco点
-        self.watch_aruco_pose = np.array([[0.99864272, -0.0507411, 0.01175022, -0.09899948],
-                                          [0.05055016, 0.99859313, 0.01601386, -0.06431557],
-                                          [-0.01254625, -0.01539815, 0.99980272, 0.1690991],
-                                          [0., 0., 0., 1.]])
+        self.watch_aruco_pose = np.array([[9.99986468e-01, 5.18479587e-03, -4.26286242e-04, -1.04633858e-01],
+                                          [-5.18581144e-03, 9.99983633e-01, -2.41682813e-03, -7.53697580e-02],
+                                          [4.13748504e-04, 2.41900606e-03, 9.99996989e-01, 1.34617099e-01],
+                                          [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 1.00000000e+00]])
         self.pose_aruco2 = []
         self.mark2camera = []
 
     def point(self):
         print("开始离心机操作")
-        duco_cobot.movej([0.14799904823303223, -0.0016595115885138512, -1.45502769947052, -0.0999247133731842,
-                          1.5761516094207764, -0.6122903823852539], 30, 10, 0, True)
+        duco_cobot.movej([0.2035699039697647, 0.17634217441082, -1.4309754371643066, -0.3029015362262726,
+                          1.5594215393066406, -0.573725163936615], 30, 10, 0, True)
         # 定位
         sleep(0.5)
         aruco.mark()
         sleep(0.5)
         # 计算示教点
         self.pose_aruco2 = duco_cobot.get_tcp_pose()
+        # self.pose_aruco2 = [-0.5797973028129363, 0.04668014090834288, 0.8269119379875063, -3.126612807015279,
+        #                     -0.0055658916313610085, 1.5655669402349084]
+        self.key_mid = get_t(self.pose_aruco2, self.key_mid)
         self.key_open = get_t(self.pose_aruco2, self.key_open)
         self.axis = get_t(self.pose_aruco2, self.axis)
-        # 取放试管点
-        self.getA = get_t(self.pose_aruco2, self.getA)
-        self.getB = get_t(self.pose_aruco2, self.getB)
-        self.putA = get_t(self.pose_aruco2, self.putA)
-        self.putB = get_t(self.pose_aruco2, self.putB)
+        # 放试管点
+        self.putA1 = get_t(self.pose_aruco2, self.putA1)
+        self.putA2 = get_t(self.pose_aruco2, self.putA2)
+        self.putA3 = get_t(self.pose_aruco2, self.putA3)
+        self.putB1 = get_t(self.pose_aruco2, self.putB1)
+        self.putB2 = get_t(self.pose_aruco2, self.putB2)
+        self.putB3 = get_t(self.pose_aruco2, self.putB3)
+        # 取试管点
+        self.getA1 = get_t(self.pose_aruco2, self.getA1)
+        self.getA2 = get_t(self.pose_aruco2, self.getA2)
+        self.getA3 = get_t(self.pose_aruco2, self.getA3)
+        self.getB1 = get_t(self.pose_aruco2, self.getB1)
+        self.getB2 = get_t(self.pose_aruco2, self.getB2)
+        self.getB3 = get_t(self.pose_aruco2, self.getB3)
+
         # 看aruco点
         self.watch_aruco_pose = get_t(self.pose_aruco2, self.watch_aruco_pose)
-        self.watch_aruco_pose[2] += 0.3
-        self.mark2camera = [3.097962708686456, -0.0908476065846564, -1.286620366399588]  # 取试管比较的旋转角度
+        self.watch_aruco_pose[2] += 0.25
+        self.mark2camera = [-3.0391876, 0.04668069, 1.59130737]  # 取试管比较的旋转角度
         # 中间点
         self.put_middleA = self.watch_aruco_pose
         self.put_middleB = get_t(self.pose_aruco2, self.put_middleB)
         self.get_middleA = self.put_middleA
         self.get_middleB = self.put_middleB
         # 关门点
+        self.close_door0 = get_t(self.pose_aruco2, self.close_door0)
         self.close_door1 = get_t(self.pose_aruco2, self.close_door1)
         # close_door2 = tcp_move  z轴 0.16
         self.close_door3 = get_t(self.pose_aruco2, self.close_door3)
+        # print("self.close_door3", self.close_door3)
 
         # 识别完移动至二维码上方
-        self.pose_aruco2[2] += 0.05
-        ret = duco_cobot.movel(self.pose_aruco2, 0.2, 0.2, 0, [], "", "", True)
-        self.pose_aruco2[2] -= 0.05
+        # self.pose_aruco2[2] += 0.05
+        # ret = duco_cobot.movel(self.pose_aruco2, 0.2, 0.2, 0, [], "", "", True)
+        # self.pose_aruco2[2] -= 0.05
 
     def open(self):
 
-        key(self.key_open, 0, -20)
+        key(self.key_mid, self.key_open, -20)
         print("盖子已打开")
 
     def start(self):
 
-        key(self.key_start, 0, -10)
+        key(self.key_mid, self.key_start, -10)
         print("离心机已启动")
+
+    def put(self):
+        motor.motor_position(4000)
+        motor.motor_position(0)
+        # movel
+        duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
+        self.watch_aruco_pose[2] -= 0.25
+        duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
+        # 求旋转角度
+        rospy.set_param("/aruco_single/marker_size", 0.0278)
+        sleep(0.5)
+        mark2camera = aruco.test_mark()
+        rospy.set_param("/aruco_single/marker_size", 0.150)
+        # 计算旋转角度
+        diff = mark2camera[2] - self.mark2camera[2]
+        self.watch_aruco_pose[2] += 0.25
+        duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
+        # A半圆
+        diff = diff * 180 / math.pi
+        # 求Angle
+        theta = abs(diff) % 30
+        print("二维码旋转角度：", theta)
+        if diff >= 0:
+            angle = -theta
+        else:
+            angle = theta
+        theta = theta * math.pi / 180
+        # A半圆移动至平台试管架取试管再移动至离心机放试管
+        # tube.get_tubeA(tube.tube_putA1, tube.tube_getA1)
+        input()
+        self.put_tubeA(self.putA1, self.put_middleA, theta)
+        input()
+        # tube.get_tubeA(tube.tube_putA2, tube.tube_getA2)
+        self.put_tubeA(self.putA2, self.put_middleA, theta)
+        input()
+        # tube.get_tubeA(tube.tube_putA3, tube.tube_getA3)
+        self.put_tubeA(self.putA3, self.put_middleA, theta)
+
+        # B半圆移动至平台试管架取试管再移动至离心机放试管
+        # tube.get_tubeB(tube.tube_putB1, tube.tube_getB1)
+        input()
+        self.put_tubeB(self.putB1, self.put_middleB, theta)
+        # tube.get_tubeB(tube.tube_putB2, tube.tube_getB2)
+        input()
+        self.put_tubeB(self.putB2, self.put_middleB, theta)
+        # tube.get_tubeB(tube.tube_putB3, tube.tube_getB3)
+        input()
+        self.put_tubeB(self.putB3, self.put_middleB, theta)
 
     def put_tubeA(self, edge, middle, angle):
         """
         离心机放试管
         """
-        dist = 0.10  # 位置判断
+        dist = 0.13  # 位置判断
         duco_cobot.movel(middle, 0.4, 0.2, 0, [], "", "", True)
         # 旋转至第一个夹取点
         target = circle(self.axis, edge, angle)
@@ -794,7 +904,7 @@ class centrifuge(object):
             print("移动至中间点", ret)
 
     def put_tubeB(self, edge, middle, angle):
-        dist = 0.10  # 位置判断
+        dist = 0.12  # 位置判断
         duco_cobot.movel(middle, 0.2, 0.2, 0, [], "", "", True)
         # 旋转至第一个夹取点
         target = circle(self.axis, edge, angle)
@@ -821,50 +931,6 @@ class centrifuge(object):
             print("返回放置点", ret)
             ret = duco_cobot.movel(middle, 0.3, 0.2, 0, [], "", "", True)
             print("移动至中间点", ret)
-
-    def put(self):
-        motor.motor_position(4000)
-        motor.motor_position(0)
-        # movel
-        duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
-        self.watch_aruco_pose[2] -= 0.3
-        duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
-        # 求旋转角度
-        rospy.set_param("/aruco_single/marker_size", 0.0274)
-        sleep(0.5)
-        mark2camera = aruco.test_mark()
-        rospy.set_param("/aruco_single/marker_size", 0.149)
-        # 计算旋转角度
-        diff = mark2camera[2] - self.mark2camera[2]
-        print("二维码旋转角度：", diff * 180 / math.pi)
-        self.watch_aruco_pose[2] += 0.3
-        duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
-        # A半圆
-        diff = diff * 180 / math.pi
-        # 求Angle
-        theta = abs(diff) % 60
-        if diff >= 0:
-            angleA = [-theta, -theta - 60, -theta - 120]
-        else:
-            angleA = [theta - 60, theta - 120, theta - 180]
-        angleA = [angleA[0] * math.pi / 180, angleA[1] * math.pi / 180, angleA[2] * math.pi / 180]
-
-        # A半圆移动至平台试管架取试管再移动至离心机放试管
-        tube.get_tubeA(tube.tube_putA1, tube.tube_getA1)
-        self.put_tubeA(self.putA, self.put_middleA, angleA[0])
-        # tube.get_tubeA(tube.tube_putA2, tube.tube_getA2)
-        # self.put_tubeA(self.putA, self.put_middleA, angleA[1])
-        # tube.get_tubeA(tube.tube_putA3, tube.tube_getA3)
-        # self.put_tubeA(self.putA, self.put_middleA, angleA[2])
-        # # B半圆移动至平台试管架取试管再移动至离心机放试管
-        # angleB = [angleA[0], angleA[0] + 60 * math.pi / 180, angleA[0] + 120 * math.pi / 180]
-        # duco_cobot.movel(self.put_middleB, 0.3, 0.2, 0, [], "", "", True)
-        # tube.get_tubeB(tube.tube_putB1, tube.tube_getB1)
-        # self.put_tubeB(self.putB, self.put_middleB, angleB[0])
-        # tube.get_tubeB(tube.tube_putB2, tube.tube_getB2)
-        # self.put_tubeB(self.putB, self.put_middleB, angleB[1])
-        # tube.get_tubeB(tube.tube_putB3, tube.tube_getB3)
-        # self.put_tubeB(self.putB, self.put_middleB, angleB[2])
 
     # def put(self):
     #     motor.motor_position(159000)
@@ -1032,47 +1098,50 @@ class centrifuge(object):
     def get(self):
         # movel
         duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
-        self.watch_aruco_pose[2] -= 0.3
+        self.watch_aruco_pose[2] -= 0.25
         duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
         # 求旋转角度
-        rospy.set_param("/aruco_single/marker_size", 0.0274)
+        rospy.set_param("/aruco_single/marker_size", 0.0278)
         sleep(0.5)
         mark2camera = aruco.test_mark()
-        rospy.set_param("/aruco_single/marker_size", 0.149)
+        rospy.set_param("/aruco_single/marker_size", 0.150)
         # 计算旋转角度
         diff = mark2camera[2] - self.mark2camera[2]
-        print("二维码旋转角度：", diff * 180 / math.pi)
-        self.watch_aruco_pose[2] += 0.3
+        self.watch_aruco_pose[2] += 0.25
         duco_cobot.movel(self.watch_aruco_pose, 0.3, 0.2, 0, [], "", "", True)
         # A半圆
-        assert -math.pi <= diff <= math.pi
+        # assert -math.pi <= diff <= math.pi
         diff = diff * 180 / math.pi
         # 求Angle
-        theta = abs(diff) % 60
+        theta = abs(diff) % 30
+        print("二维码旋转角度：", theta)
         if diff >= 0:
-            angleA = [-theta, -theta - 60, -theta - 120]
+            angle = -theta
         else:
-            angleA = [theta - 60, theta - 120, theta - 180]
-        angleA = [angleA[0] * math.pi / 180, angleA[1] * math.pi / 180, angleA[2] * math.pi / 180]
+            angle = theta
+        theta = theta * math.pi / 180
         # 取A半圆
-        self.get_tubeA(self.getA, self.get_middleA, angleA[0])
-        tube.put_tubeA(tube.tube_putA1)
-        # self.get_tubeA(self.getA, self.get_middleA, angleA[1])
+        self.get_tubeA(self.getA1, self.get_middleA, theta)
+        input()
+        # tube.put_tubeA(tube.tube_putA1)
+        self.get_tubeA(self.getA2, self.get_middleA, theta)
+        input()
         # tube.put_tubeA(tube.tube_putA2)
-        # self.get_tubeA(self.getA, self.get_middleA, angleA[2])
+        self.get_tubeA(self.getA3, self.get_middleA, theta)
+        input()
         # tube.put_tubeA(tube.tube_putA3, )
-        # print("A半圆取完，取B半圆")
-        #
-        # # 取B半圆
+        print("A半圆取完，取B半圆")
+        # 取B半圆
         # duco_cobot.movej(tube.tube_middleB_j1, 20, 10, 0, True)
         # duco_cobot.movej(tube.tube_middleB_j2, 20, 10, 0, True)
-        # assert -math.pi / 3 < angleA[0] <= 0
-        # angleB = [angleA[0], angleA[0] + 60 * math.pi / 180, angleA[0] + 120 * math.pi / 180]
-        # self.get_tubeB(self.getB, self.get_middleB, angleB[0])
+        self.get_tubeB(self.getB1, self.get_middleB, theta)
+        input()
         # tube.put_tubeB(tube.tube_putB1)
-        # self.get_tubeB(self.getB, self.get_middleB, angleB[1])
+        self.get_tubeB(self.getB2, self.get_middleB, theta)
+        input()
         # tube.put_tubeB(tube.tube_putB2)
-        # self.get_tubeB(self.getB, self.get_middleB, angleB[2])
+        self.get_tubeB(self.getB3, self.get_middleB, theta)
+        input()
         # tube.put_tubeB(tube.tube_putB3)
 
     def get_tubeA(self, edge, middle, angle):
@@ -1081,7 +1150,7 @@ class centrifuge(object):
         # 旋转至第一个夹取点
         target = circle(self.axis, edge, angle)
         duco_cobot.movel(target, 0.2, 0.2, 0, [], "", "", True)
-        robotiq(1, 1, 180, 0, 100, 1)
+        robotiq(1, 1, 190, 0, 100, 1)
         # Forcemode
         duco_cobot.fc_config([False, False, True, False, False, False], [0, 0, -20, 0, 0, 0],
                              [1000, 1000, 1000, 57.29578, 57.29578, 57.29578],
@@ -1097,7 +1166,7 @@ class centrifuge(object):
         duco_cobot.fc_stop()
         sleep(1)
         # 上升一点点，夹
-        ret = duco_cobot.tcp_move([0, 0, -0.002, 0, 0, 0], 0.05, 0.05, 0, True)
+        ret = duco_cobot.tcp_move([0, 0, -0.003, 0, 0, 0], 0.05, 0.05, 0, True)
         print("move", ret)
         # 夹爪闭合
         robotiq(1, 1, 250, 0, 100, 1)
@@ -1124,7 +1193,7 @@ class centrifuge(object):
         robotiq(1, 1, 170, 0, 10, 1)
         duco_cobot.tcp_move([0, 0, 0.1, 0, 0, 0], 0.05, 0.05, 0, True)
         # 夹爪闭合
-        robotiq(1, 1, 250, 0, 100, 1)
+        robotiq(1, 1, 250, 0, 200, 1)
 
         duco_cobot.fc_config([False, True, False, False, False, False], [0, -20, 0, 0, 0, 0],
                              [1000, 1000, 1000, 57.29578, 57.29578, 57.29578],
@@ -1142,8 +1211,9 @@ class centrifuge(object):
 
     def close_door(self):
         robotiq(1, 1, 255, 0, 100, 50)
+        duco_cobot.movel(self.close_door0, 0.3, 0.2, 0, [], "", "", True)
         duco_cobot.movel(self.close_door1, 0.3, 0.2, 0, [], "", "", True)
-        duco_cobot.tcp_move([0, 0, 0.16, 0, 0, 0], 0.3, 0.2, 0, True)
+        duco_cobot.tcp_move([0, 0, 0.08, 0, 0, 0], 0.3, 0.2, 0, True)
         duco_cobot.movel(self.close_door3, 0.2, 0.2, 0, [], "", "", True)
         # 向下按压
         duco_cobot.fc_config([False, False, True, False, False, False], [0, 0, -40, 0, 0, 0],
@@ -1245,8 +1315,8 @@ class seperation(object):
         # 倾倒取试管
         self.getA1_j = [2.3487939834594727, -0.42252153158187866, -1.9350558519363403, -0.7822585701942444,
                         0.7864270806312561, 2.3668200969696045]
-        self.get_A2_j = [1.9364289045333862, 0.3621096611022949, -2.7668209075927734, -0.7215105295181274,
-                         -1.2293435335159302, 2.355231285095215]
+        self.getA2_j = [1.9364289045333862, 0.3621096611022949, -2.7668209075927734, -0.7215105295181274,
+                        -1.2293435335159302, 2.355231285095215]
         self.getA3_j = [1.608720302581787, 0.2640427350997925, -2.6997811794281006, -0.7022039294242859,
                         -1.5462303161621094, 2.3547041416168213]
         self.getB1_j = [2.2836718559265137, -0.4949302077293396, -1.8126130104064941, -0.8326761722564697,
@@ -1258,8 +1328,8 @@ class seperation(object):
         # 倾倒放试管
         self.putA1_j = [2.348710298538208, -0.28018489480018616, -1.8458333015441895, -1.0139734745025635,
                         0.7870143055915833, 2.3670239448547363]
-        self.put_A2_j = [1.9349309206008911, 0.6399519443511963, -2.5771586894989014, -1.1889551877975464,
-                         -1.2299786806106567, 2.3549678325653076]
+        self.putA2_j = [1.9349309206008911, 0.6399519443511963, -2.5771586894989014, -1.1889551877975464,
+                        -1.2299786806106567, 2.3549678325653076]
         self.putA3_j = [1.6077854633331299, 0.5063397884368896, -2.5509490966796875, -1.0933210849761963,
                         -1.5464340448379517, 2.35445237159729]
         self.putB1_j = [2.283612012863159, -0.36189332604408264, -1.722959041595459, -1.0555108785629272,
@@ -1274,15 +1344,15 @@ class drying(object):
     def __init__(self):
         print("开始烘干机操作")
         # 参数
-        self.handle_offset = 0.12  # 路点到门把手距离
+        self.handle_offset = 0.1  # 路点到门把手距离
         # 过渡矩阵
-        self.openpower = np.array([[0.99915028, 0.00958035, 0.0400866, -0.64245626],
-                                   [-0.00942595, 0.99994742, -0.00403894, 0.33302306],
-                                   [-0.04012319, 0.00365765, 0.99918805, -0.00519725],
+        self.openpower = np.array([[0.9984479, 0.00925176, 0.05491991, -0.64168806],
+                                   [-0.00903779, 0.99995058, -0.0041431, 0.33587667],
+                                   [-0.05495553, 0.00364032, 0.99848217, 0.05920001],
                                    [0., 0., 0., 1.]])
-        self.handle = np.array([[0.99916037, 0.00723318, 0.04032669, -0.54900205],
-                                [-0.00696292, 0.99995238, -0.00683811, 0.17952823],
-                                [-0.04037423, 0.00655158, 0.99916315, -0.06888135],
+        self.handle = np.array([[0.99967743, 0.01586798, 0.01983022, -0.53712757],
+                                [-0.01583831, 0.9998732, -0.0016527, 0.17841741],
+                                [-0.01985393, 0.00133809, 0.999802, -0.04919224],
                                 [0., 0., 0., 1.]])
         self.open_waypoint1 = np.array([[0.73507608, 0.57945417, 0.35198867, -0.66300158],
                                         [-0.66570147, 0.51848966, 0.53666566, 0.02048671],
@@ -1292,21 +1362,25 @@ class drying(object):
                                         [-0.66570687, 0.51847575, 0.5366724, 0.0295821],
                                         [0.12848153, -0.62881469, 0.76686673, -0.24252797],
                                         [0., 0., 0., 1.]])
-        self.open_waypoint3 = np.array([[0.86893659, 0.48914397, -0.07541473, -0.79578978],
-                                        [0.02202236, 0.11401251, 0.9932352, -0.30375685],
-                                        [0.49443323, -0.86471922, 0.08829753, -0.07942949],
+        self.open_waypoint3 = np.array([[0.87617755, 0.47620137, -0.07446584, -0.67929367],
+                                        [0.02228718, 0.11430381, 0.99319581, -0.30597807],
+                                        [0.48147294, -0.8718755, 0.08953725, 0.00769625],
                                         [0., 0., 0., 1.]])
-        self.open_waypoint4 = np.array([[0.8584633, 0.51282461, 0.00718869, -0.55643852],
-                                        [-0.00938296, 0.00168979, 0.99995455, -0.36641834],
-                                        [0.51278916, -0.85849174, 0.00626244, 0.12408332],
+        self.open_waypoint4 = np.array([[0.86786429, 0.49100267, -0.07568326, -0.39439769],
+                                        [0.02223934, 0.11379185, 0.99325567, -0.34387848],
+                                        [0.49630332, -0.86369427, 0.08783631, 0.12079046],
                                         [0., 0., 0., 1.]])
         self.open_waypoint5 = np.array([[0.85845333, 0.51284122, 0.00719491, 0.23259358],
                                         [-0.00937571, 0.00166529, 0.99995466, -0.36989539],
                                         [0.51280599, -0.85848186, 0.00623783, -0.22511512],
                                         [0., 0., 0., 1.]])
-        self.close_waypoint1 = np.array([[0.66370055, -0.5625204, 0.4930237, 0.2223112],
-                                         [-0.05488512, 0.62072343, 0.78210616, -0.56891528],
-                                         [-0.74598204, -0.54614396, 0.38110049, -0.35505039],
+        self.close_waypoint0 = [[0.71237156, -0.58417015, 0.388937, 0.15358778],
+                                [0.08451361, 0.62157144, 0.77878521, -0.44990721],
+                                [-0.6966952, -0.52191397, 0.49216014, -0.34738044],
+                                [0., 0., 0., 1.]]
+        self.close_waypoint1 = np.array([[0.71237551, -0.58416324, 0.38894014, 0.29495323],
+                                         [0.08450973, 0.62157644, 0.77878164, -0.4514387],
+                                         [-0.69669164, -0.52191574, 0.49216331, -0.34467472],
                                          [0., 0., 0., 1.]])
         self.close_waypoint2 = np.array([[0.66371594, -0.56251054, 0.49301425, -0.39581818],
                                          [-0.05489129, 0.62071669, 0.78211107, -0.39202424],
@@ -1320,32 +1394,29 @@ class drying(object):
         # 放试管架
         self.waypoint1_j = [2.4160375595092773, -0.41018974781036377, -1.6827280521392822, -1.0518676042556763,
                             0.8470672965049744, 0.7902474403381348]
-        self.jia_j = [2.4160735607147217, -0.5137933492660522, -1.753578782081604, -0.877329409122467,
-                      0.8465519547462463, 0.7901036143302917]
-        self.jia_move = [0.22035756707191467, -0.5597630143165588, 0.2058982104063034, -1.0989407300949097,
-                         -1.5707582235336304, 1.0976780652999878]
+        self.jia_j = [2.416109561920166, -0.5399549603462219, -1.7644844055175781, -0.8401902914047241,
+                      0.8464081287384033, 0.7900316715240479]
+        self.jia_move = [0.22233222424983978, -0.559535026550293, 0.1820368766784668, -1.3296308517456055,
+                         -1.5707857608795166, 1.328418493270874]
         self.waypoint2_j = [2.3617489337921143, -0.2606026530265808, -1.882265329360962, -1.00188148021698,
                             0.7927427887916565, 0.7899118661880493]
-        self.waypoint3_j = [0.621639609336853, 0.4628130793571472, -2.2814958095550537, -1.2691535949707031,
-                            -0.8961220979690552, 0.764840841293335]
-        self.jia_put = np.array([[-0.01233997, 0.99985521, 0.01171665, -0.18250201],
-                                 [-0.99990167, -0.01226078, -0.00680684, 0.13653012],
-                                 [-0.0066622, -0.01179949, 0.99990819, 0.2687481],
-                                 [0., 0., 0., 1.]])
+        self.waypoint3_j = [0.6042504906654358, 0.4839892089366913, -2.070789098739624, -1.553371548652649,
+                            -0.9645640254020691, 0.782913088798523]
 
-        self.jia_close = [0.2792383134365082, 0.13230015337467194, -1.518208622932434, -0.18123768270015717,
-                          1.560260534286499, -0.630290687084198]
+        self.jia_close = [0.2792383134365082, 0.054019197821617126, -1.1718405485153198, -0.4493247866630554,
+                          1.5603203773498535, -0.6294997334480286]
         self.tubejia_getp = []
 
         self.watch_aruco_j = []
         self.pose_aruco2 = []
+        self.jia_put = []
 
     def point(self):
         # 移动至识别aruco姿态
-        duco_cobot.movej([-0.02238067239522934, 0.3221063017845154, -2.4003913402557373, 2.0775609016418457,
-                          1.5958776473999023, -0.7698469758033752], 30, 10, 0, True)
-        self.watch_aruco_j = [-0.06659048050642014, 0.05724295228719711, -2.1977741718292236, 2.1409575939178467,
-                              1.6412498950958252, -0.7711532711982727]
+        duco_cobot.movej([-0.1358712762594223, 0.41367778182029724, -2.256640672683716, 1.8141716718673706,
+                          1.7438228130340576, -0.7815196514129639], 30, 10, 0, True)
+        self.watch_aruco_j = [-0.05049566552042961, 0.15356017649173737, -2.0894246101379395, 1.9346251487731934,
+                              1.6355094909667969, -0.7722198963165283]
         duco_cobot.movej(self.watch_aruco_j, 20, 10, 0, True)
         sleep(1)
         # 定位
@@ -1360,11 +1431,10 @@ class drying(object):
         self.open_waypoint3 = get_t(self.pose_aruco2, self.open_waypoint3)
         self.open_waypoint4 = get_t(self.pose_aruco2, self.open_waypoint4)
         self.open_waypoint5 = get_t(self.pose_aruco2, self.open_waypoint5)
+        self.close_waypoint0 = get_t(self.pose_aruco2, self.close_waypoint0)
         self.close_waypoint1 = get_t(self.pose_aruco2, self.close_waypoint1)
         self.close_waypoint2 = get_t(self.pose_aruco2, self.close_waypoint2)
         self.close_waypoint3 = get_t(self.pose_aruco2, self.close_waypoint3)
-
-        self.jia_put = get_t(self.pose_aruco2, self.jia_put)
 
     def open_door(self):
         print("烘干机准备开门")
@@ -1393,7 +1463,7 @@ class drying(object):
                              [0.15, 0.15, 0.15, 1.047198, 1.047198, 1.047198], [0, 0, 0, 0, 0, 0], "default",
                              "default", 0)
         robotiq(1, 1, 0, 0, 100, 10)
-        sleep(1)
+        # sleep(1)
         duco_cobot.fc_stop()
         # 移动至个路点
         duco_cobot.tcp_move([0, 0, -0.1, 0, 0, 0], 0.2, 0.2, 0, True)
@@ -1409,8 +1479,9 @@ class drying(object):
     def close_door(self):
         print("烘干机准备关门")
         # robotiq(1, 1, 255, 0, 100, 1)
+        duco_cobot.movel(self.close_waypoint0, 0.3, 0.2, 0, [], "", "", True)
         duco_cobot.movel(self.close_waypoint1, 0.3, 0.2, 0, [], "", "", True)
-        duco_cobot.tcp_move([0, 0, 0.2, 0, 0, 0], 0.3, 0.2, 0, True)
+        duco_cobot.tcp_move([0, 0, 0.07, 0, 0, 0], 0.3, 0.2, 0, True)
         duco_cobot.movel(self.close_waypoint2, 0.3, 0.2, 0, [], "", "", True)
         duco_cobot.movel(self.close_waypoint3, 0.1, 0.1, 0, [], "", "", True)
         # 力控关门
@@ -1452,12 +1523,13 @@ class drying(object):
                              [1000, 1000, 2000, 57.29578, 57.29578, 57.29578],
                              [0.15, 0.15, 0.03, 1.047198, 1.047198, 1.047198], [0, 0, 0, 0, 0, 0], "default",
                              "default", 0)
-        duco_cobot.fc_wait_pos([0.08, 0, 0, 0, 0, 0], [0.01, 0, 0, 0, 0, 0], False, 0, 500000)
+        duco_cobot.fc_wait_pos([0.02, 0, 0, 0, 0, 0], [0.01, 0, 0, 0, 0, 0], False, 0, 500000)
         duco_cobot.fc_wait_vel([0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], False, 0, 5000)
         duco_cobot.fc_wait_ft([0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], False, 0, 500000)
         duco_cobot.fc_wait_logic([1, 0, 0])
         duco_cobot.fc_move()
         duco_cobot.fc_stop()
+        duco_cobot.tcp_move([0, 0, -0.06, 0, 0, 0], 0.2, 0.2, 0, True)
         print("烘干机已关门")
 
     def open_power(self):
@@ -1479,12 +1551,13 @@ class drying(object):
                              [1000, 1000, 2000, 57.29578, 57.29578, 57.29578],
                              [0.15, 0.15, 0.03, 1.047198, 1.047198, 1.047198], [0, 0, 0, 0, 0, 0], "default",
                              "default", 0)
-        duco_cobot.fc_wait_pos([0.1, 0, 0, 0, 0, 0], [0.01, 0, 0, 0, 0, 0], False, 0, 500000)
+        duco_cobot.fc_wait_pos([0.02, 0, 0, 0, 0, 0], [0.01, 0, 0, 0, 0, 0], False, 0, 500000)
         duco_cobot.fc_wait_vel([0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], False, 0, 5000)
         duco_cobot.fc_wait_ft([0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], False, 0, 500000)
         duco_cobot.fc_wait_logic([1, 0, 0])
         duco_cobot.fc_move()
         duco_cobot.fc_stop()
+        duco_cobot.tcp_move([0, 0, -0.08, 0, 0, 0], 0.2, 0.2, 0, True)
         print("烘干机电源已打开")
 
     def tubejia_put(self):
@@ -1493,10 +1566,10 @@ class drying(object):
         duco_cobot.movej(self.waypoint1_j, 30, 10, 0, True)
         duco_cobot.movej(self.jia_j, 20, 10, 0, True)
         motor.motor_position(4000)
-        motor.motor_position(-157000)
+        motor.motor_position(-158000)
         sleep(2)
         print('移动至jia_j')
-        robotiq(1, 1, 0, 0, 100, 10)
+        robotiq(1, 1, 150, 0, 100, 10)
         print("开启力控")
         duco_cobot.fc_config([False, False, True, False, False, False], [0, 0, -20, 0, 0, 0],
                              [1000, 1000, 2000, 57.29578, 57.29578, 57.29578],
@@ -1516,7 +1589,9 @@ class drying(object):
         sleep(1)
         duco_cobot.movej(self.waypoint2_j, 20, 10, 0, True)
         duco_cobot.movej(self.waypoint3_j, 30, 10, 0, True)
-        duco_cobot.movel(self.jia_put, 0.2, 0.2, 0, [], "", "", True)
+        duco_cobot.tcp_move([0, 0, 0.36, 0, 0, 0], 0.2, 0.2, 0, True)
+        self.jia_put = duco_cobot.get_tcp_pose()
+
         print('向下放试管架')
         duco_cobot.fc_config([True, False, False, False, False, False], [20, 0, 0, 0, 0, 0],
                              [1000, 1000, 2000, 57.29578, 57.29578, 57.29578],
@@ -1556,29 +1631,31 @@ class drying(object):
         duco_cobot.fc_move()
         duco_cobot.fc_stop()
         robotiq(1, 1, 255, 0, 100, 1)
-        duco_cobot.movel(self.jia_put, 0.2, 0.2, 0, [], "", "", True)
+        duco_cobot.movel(self.jia_put, 0.3, 0.2, 0, [], "", "", True)
         duco_cobot.movej(self.waypoint3_j, 30, 10, 0, True)
         duco_cobot.movej(self.waypoint2_j, 30, 10, 0, True)
         duco_cobot.movel(self.jia_move, 0.2, 0.2, 0, [], "", "", True)
         sleep(1)
-        robotiq(1, 1, 0, 0, 100, 1)
+        robotiq(1, 1, 150, 0, 100, 1)
         duco_cobot.tcp_move([0, 0, -0.11, 0, 0, 0], 0.05, 0.05, 0, True)
         motor.motor_position(0)
         robotiq(1, 1, 255, 0, 100, 1)
+        curr_pose = duco_cobot.get_tcp_pose()
+        curr_pose[2] += 0.1
+        duco_cobot.movel(curr_pose, 0.3, 0.2, 0, [], "", "", True)
         duco_cobot.movej(self.waypoint2_j, 30, 10, 0, True)
         duco_cobot.movej(self.waypoint3_j, 30, 10, 0, True)
         duco_cobot.movej(self.jia_close, 20, 10, 0, True)
 
     def defult(self):
-        self.handle_offset = 0.12  # 路点到门把手距离
         # 过渡矩阵
-        self.openpower = np.array([[0.99915028, 0.00958035, 0.0400866, -0.64245626],
-                                   [-0.00942595, 0.99994742, -0.00403894, 0.33302306],
-                                   [-0.04012319, 0.00365765, 0.99918805, -0.00519725],
+        self.openpower = np.array([[0.9984479, 0.00925176, 0.05491991, -0.64168806],
+                                   [-0.00903779, 0.99995058, -0.0041431, 0.33587667],
+                                   [-0.05495553, 0.00364032, 0.99848217, 0.05920001],
                                    [0., 0., 0., 1.]])
-        self.handle = np.array([[0.99916037, 0.00723318, 0.04032669, -0.54900205],
-                                [-0.00696292, 0.99995238, -0.00683811, 0.17952823],
-                                [-0.04037423, 0.00655158, 0.99916315, -0.06888135],
+        self.handle = np.array([[0.99967743, 0.01586798, 0.01983022, -0.53712757],
+                                [-0.01583831, 0.9998732, -0.0016527, 0.17841741],
+                                [-0.01985393, 0.00133809, 0.999802, -0.04919224],
                                 [0., 0., 0., 1.]])
         self.open_waypoint1 = np.array([[0.73507608, 0.57945417, 0.35198867, -0.66300158],
                                         [-0.66570147, 0.51848966, 0.53666566, 0.02048671],
@@ -1588,21 +1665,25 @@ class drying(object):
                                         [-0.66570687, 0.51847575, 0.5366724, 0.0295821],
                                         [0.12848153, -0.62881469, 0.76686673, -0.24252797],
                                         [0., 0., 0., 1.]])
-        self.open_waypoint3 = np.array([[0.86893659, 0.48914397, -0.07541473, -0.79578978],
-                                        [0.02202236, 0.11401251, 0.9932352, -0.30375685],
-                                        [0.49443323, -0.86471922, 0.08829753, -0.07942949],
+        self.open_waypoint3 = np.array([[0.87617755, 0.47620137, -0.07446584, -0.67929367],
+                                        [0.02228718, 0.11430381, 0.99319581, -0.30597807],
+                                        [0.48147294, -0.8718755, 0.08953725, 0.00769625],
                                         [0., 0., 0., 1.]])
-        self.open_waypoint4 = np.array([[0.8584633, 0.51282461, 0.00718869, -0.55643852],
-                                        [-0.00938296, 0.00168979, 0.99995455, -0.36641834],
-                                        [0.51278916, -0.85849174, 0.00626244, 0.12408332],
+        self.open_waypoint4 = np.array([[0.86786429, 0.49100267, -0.07568326, -0.39439769],
+                                        [0.02223934, 0.11379185, 0.99325567, -0.34387848],
+                                        [0.49630332, -0.86369427, 0.08783631, 0.12079046],
                                         [0., 0., 0., 1.]])
         self.open_waypoint5 = np.array([[0.85845333, 0.51284122, 0.00719491, 0.23259358],
                                         [-0.00937571, 0.00166529, 0.99995466, -0.36989539],
                                         [0.51280599, -0.85848186, 0.00623783, -0.22511512],
                                         [0., 0., 0., 1.]])
-        self.close_waypoint1 = np.array([[0.66370055, -0.5625204, 0.4930237, 0.2223112],
-                                         [-0.05488512, 0.62072343, 0.78210616, -0.56891528],
-                                         [-0.74598204, -0.54614396, 0.38110049, -0.35505039],
+        self.close_waypoint0 = [[0.71237156, -0.58417015, 0.388937, 0.15358778],
+                                [0.08451361, 0.62157144, 0.77878521, -0.44990721],
+                                [-0.6966952, -0.52191397, 0.49216014, -0.34738044],
+                                [0., 0., 0., 1.]]
+        self.close_waypoint1 = np.array([[0.71237551, -0.58416324, 0.38894014, 0.29495323],
+                                         [0.08450973, 0.62157644, 0.77878164, -0.4514387],
+                                         [-0.69669164, -0.52191574, 0.49216331, -0.34467472],
                                          [0., 0., 0., 1.]])
         self.close_waypoint2 = np.array([[0.66371594, -0.56251054, 0.49301425, -0.39581818],
                                          [-0.05489129, 0.62071669, 0.78211107, -0.39202424],
@@ -1616,25 +1697,22 @@ class drying(object):
         # 放试管架
         self.waypoint1_j = [2.4160375595092773, -0.41018974781036377, -1.6827280521392822, -1.0518676042556763,
                             0.8470672965049744, 0.7902474403381348]
-        self.jia_j = [2.4160735607147217, -0.5137933492660522, -1.753578782081604, -0.877329409122467,
-                      0.8465519547462463, 0.7901036143302917]
-        self.jia_move = [0.22035756707191467, -0.5597630143165588, 0.2058982104063034, -1.0989407300949097,
-                         -1.5707582235336304, 1.0976780652999878]
+        self.jia_j = [2.416109561920166, -0.5399549603462219, -1.7644844055175781, -0.8401902914047241,
+                      0.8464081287384033, 0.7900316715240479]
+        self.jia_move = [0.22233222424983978, -0.559535026550293, 0.1820368766784668, -1.3296308517456055,
+                         -1.5707857608795166, 1.328418493270874]
         self.waypoint2_j = [2.3617489337921143, -0.2606026530265808, -1.882265329360962, -1.00188148021698,
                             0.7927427887916565, 0.7899118661880493]
-        self.waypoint3_j = [0.621639609336853, 0.4628130793571472, -2.2814958095550537, -1.2691535949707031,
-                            -0.8961220979690552, 0.764840841293335]
-        self.jia_put = np.array([[-0.01233997, 0.99985521, 0.01171665, -0.18250201],
-                                 [-0.99990167, -0.01226078, -0.00680684, 0.13653012],
-                                 [-0.0066622, -0.01179949, 0.99990819, 0.2687481],
-                                 [0., 0., 0., 1.]])
+        self.waypoint3_j = [0.6042504906654358, 0.4839892089366913, -2.070789098739624, -1.553371548652649,
+                            -0.9645640254020691, 0.782913088798523]
 
-        self.jia_close = [0.2792383134365082, 0.13230015337467194, -1.518208622932434, -0.18123768270015717,
-                          1.560260534286499, -0.630290687084198]
+        self.jia_close = [0.2792383134365082, 0.054019197821617126, -1.1718405485153198, -0.4493247866630554,
+                          1.5603203773498535, -0.6294997334480286]
         self.tubejia_getp = []
 
         self.watch_aruco_j = []
         self.pose_aruco2 = []
+        self.jia_put = []
 
 
 class prilling(object):
@@ -1644,54 +1722,36 @@ class prilling(object):
 
 motor = motor()
 tube = testtube()
-# if __name__ == '__main__':
-#     # 初始化节点
-#     rospy.init_node('robot')
-#     try:
-#         thd_B = threading.Thread(target=hearthread_fun)
-#         thd_B.daemon = True
-#         thd_B.start()
-#
-#         # sam = getsample()
-#         # sam.point()
-#         # sam.get_tube()
-#         # tube.lidput()
-#         cen = centrifuge()
-#         cen.point()
-#         cen.open()
-#         cen.put()
-#         cen.close_door()
-#         cen.open()
-#         cen.get()
-#         cen.close_door()
-#         tube.lidget()
-#         # joi = [-0.5873409509658813, -0.7318648099899292, 0.16850842535495758, 1.5708409547805786, 5.678902016370557e-05,
-#         #        -0.8439730405807495]
-#         # aruco = [-0.5525179456176256, -0.7438318768039031, 0.21275561315349745, 1.5598971161470672,
-#         #          0.004866253930227771, 0.004668841606868143]
-#         # guodu = get_T(aruco, joi)
-#         # print("guodu", guodu)
-#         # pose=[-0.5873409509658813, -0.7318648099899292, 0.16850842535495758, 1.5708409547805786, 5.678902016370557e-05, -0.8439730405807495]
-#         # duco_cobot.movel(pose, 0.2, 0.2, 0, [], "", "", True)
-#         # cen = centrifuge()
-#         # cen.point()
-#         # cen.open()
-#         # cen.put()
-#         # cen.get()
-#         # test
-#         # pose = [0.9720103740692139, -0.5249746441841125, -1.7237380743026733, -0.8820751309394836,
-#         #                       -2.1653714179992676, -0.7871522307395935]
-#         # duco_cobot.movej(pose, 40, 20, 0, True)
-#         # aruco.mark()
-#
-#         pose_j = duco_cobot.get_actual_joints_position()
-#         pose = duco_cobot.get_tcp_pose()
-#         print("joint", pose_j)
-#         print("pose", pose)
-#         # Close!
-#         duco_cobot.close()
-#     except Thrift.TException as tx:
-#         print('%s' % tx.message)
-#
-#     except Exception as e:
-#         print(e)
+if __name__ == '__main__':
+    # 初始化节点
+    rospy.init_node('robot')
+    try:
+        thd_B = threading.Thread(target=hearthread_fun)
+        thd_B.daemon = True
+        thd_B.start()
+
+        cen = centrifuge()
+        cen.point()
+        cen.open()
+        cen.put()
+        cen.get()
+        cen.close_door()
+        # aruco.test_mark()
+        # wayl=[0.5458513498306274, 0.021769648417830467, -1.4896621704101562, -0.10671976953744888, 1.0585049390792847, 0.7568593621253967]
+        # duco_cobot.movej(wayl, 20, 10, 0, True)
+        # close = [-0.671795129776001, 0.10141169279813766, 0.7230322360992432, 2.14272403717041, -0.013568880036473274,
+        #          -0.545673131942749]
+        # duco_cobot.movel(close, 0.2, 0.2, 0, [], "", "", True)
+        # duco_cobot.tcp_move([0, 0, 0.1, 0, 0, 0], 0.2, 0.2, 0, True)
+
+        pose_j = duco_cobot.get_actual_joints_position()
+        pose = duco_cobot.get_tcp_pose()
+        print("joint", pose_j)
+        print("pose", pose)
+        # Close!
+        duco_cobot.close()
+    except Thrift.TException as tx:
+        print('%s' % tx.message)
+
+    except Exception as e:
+        print(e)

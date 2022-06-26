@@ -19,7 +19,7 @@ class motor:
         return stop_bit
 
     def motor_position(self, position_abs):
-        portx = "/dev/motor"
+        portx = "/dev/ttyUSB1"
         bps = 38400
         # 超时设置,None：永远等待操作，0为立即返回请求结果，其他值为等待超时时间(单位为秒）
         timex = None
