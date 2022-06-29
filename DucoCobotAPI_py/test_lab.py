@@ -1,3 +1,5 @@
+import threading
+
 import roslib
 
 roslib.load_manifest('robotiq_2f_gripper_control')
@@ -9,7 +11,7 @@ from tube_motor import motor
 # sys.path.append('gen_py')
 # sys.path.append('lib')
 # from DucoCobot import DucoCobot
-
+from thrift import Thrift
 # from thrift.transport import TSocket
 # from thrift.transport import TTransport
 # from thrift.protocol import TBinaryProtocol
@@ -191,17 +193,17 @@ class testtube(object):
         self.tube_putB3 = [-0.011589700356125832, -0.8735164999961853, 0.34356293082237244, 1.5708290338516235,
                            -9.4243987405207e-06, -2.604895830154419]
         # 放盖（试管上）
-        self.lid_putA1 = [-0.019687077030539513, -0.5766299366950989, 0.5337135148048401, -3.1415886878967285,
+        self.lid_putA1 = [-0.019687077030539513, -0.5766299366950989, 0.5387135148048401, -3.1415886878967285,
                           -3.997909516328946e-05, -3.1415398120880127]
         self.lid_putA2 = [-0.08533205837011337, -0.5767612457275391, 0.5331877779960632, 3.1415555477142334,
                           -3.843598096864298e-05, -3.1415507793426514]
-        self.lid_putA3 = [-0.15025600790977478, -0.5762959122657776, 0.5333243451118469, 3.141587018966675,
+        self.lid_putA3 = [-0.15025600790977478, -0.5762959122657776, 0.5323243451118469, 3.141587018966675,
                           -9.225173926097341e-06, 3.1415891647338867]
         self.lid_putB1 = [-0.019957304000854492, -0.6420226330757141, 0.5330006790161133, -3.141570806503296,
                           -1.454879566153977e-05, -3.141569137573242]
-        self.lid_putB2 = [-0.08532851934432983, -0.6420718831062317, 0.5333757839202881, -3.1415839195251465,
+        self.lid_putB2 = [-0.08532851934432983, -0.6420718831062317, 0.5323757839202881, -3.1415839195251465,
                           -2.1270960132824257e-05, -3.141561508178711]
-        self.lid_putB3 = [-0.15104584531784058, -0.6420934796333313, 0.5335747442245483, -3.1415863037109375,
+        self.lid_putB3 = [-0.15104584531784058, -0.6420934796333313, 0.5325747442245483, -3.1415863037109375,
                           -1.5198091205093078e-05, -3.141561985015869]
         # 取盖（试管上）
         self.lid_getA1 = [-0.019693441689014435, -0.5777014456748962, 0.5015154480934143, -3.141402244567871,
@@ -427,7 +429,6 @@ class testtube(object):
         duco_cobot.movej(self.lid_middle_j, 20, 10, 0, True)
         duco_cobot.movel(putlid, 0.3, 0.2, 0, [], "", "", True)
         # 力控盖盖子
-        curpose = duco_cobot.get_tcp_pose()
         duco_cobot.fc_config([False, False, True, False, False, False], [0, 0, -40, 0, 0, 0],
                              [1000, 1000, 1000, 57.29578, 57.29578, 57.29578],
                              [0.15, 0.15, 0.15, 1.047198, 1.047198, 1.047198], [0, 0, 0, 0, 0, 0], "default",
@@ -440,9 +441,8 @@ class testtube(object):
         duco_cobot.fc_move()
         duco_cobot.fc_stop()
         sleep(1)
-        curpose1 = duco_cobot.get_tcp_pose()
-        offset = curpose1[2]-curpose[2]
-        print("放试管盖的位置差", offset)
+        curpose = duco_cobot.get_tcp_pose()
+        print("curpose", curpose)
         robotiq(1, 1, 120, 0, 100, 1)
         duco_cobot.movel(putlid, 0.3, 0.2, 0, [], "", "", True)
 
@@ -460,7 +460,7 @@ class testtube(object):
 
     def lidput(self):
         """
-        从平台上取6个盖，放到试管上
+        从平台上取6个盖，放到试管架的试管上
         """
         motor.motor_position(4000)
         self.lid_put(self.lid_putA3, self.lid_put_A3, self.lid_get_A3)
@@ -1823,30 +1823,33 @@ class prilling(object):
 
 motor = motor()
 tube = testtube()
-# if __name__ == '__main__':
-#     # 初始化节点
-#     rospy.init_node('robot')
-#     try:
-#         thd_B = threading.Thread(target=hearthread_fun)
-#         thd_B.daemon = True
-#         thd_B.start()
-#
-#         # wayj = [2.417032241821289, -0.5455036163330078, -1.7679119110107422, -0.8312020897865295, 0.8472590446472168, 0.790019690990448]
-#         # duco_cobot.movej(wayj, 20, 10, 0, True)
-#         # close = [-0.9290851950645447, -1.039432168006897, 0.16890758275985718, 1.5707931518554688, -5.7828524404612835e-06, -1.2549126148223877]
-#         # duco_cobot.movel(close, 0.2, 0.2, 0, [], "", "", True)
-#         # duco_cobot.tcp_move([0, 0, 0.1, 0, 0, 0], 0.2, 0.2, 0, True)
-#         pose_j = duco_cobot.get_actual_joints_position()
-#         pose = duco_cobot.get_tcp_pose()
-#         print("joint", pose_j)
-#         print("pose", pose)
-#         # Close!
-#         duco_cobot.close()
-#         # duco_cobot.disable(True)
-#         # duco_cobot.power_off(True)
-#         # duco_cobot.shutdown(True)
-#     except Thrift.TException as tx:
-#         print('%s' % tx.message)
-#
-#     except Exception as e:
-#         print(e)
+if __name__ == '__main__':
+    # 初始化节点
+    rospy.init_node('robot')
+    try:
+        thd_B = threading.Thread(target=hearthread_fun)
+        thd_B.daemon = True
+        thd_B.start()
+        # robot_state = duco_cobot.get_robot_state()
+        # print("robot_state",robot_state)
+        # last_error=duco_cobot.get_last_error()
+        # print('last_error',last_error)
+        # wayj = [2.417032241821289, -0.5455036163330078, -1.7679119110107422, -0.8312020897865295, 0.8472590446472168, 0.790019690990448]
+        # duco_cobot.movej(wayj, 20, 10, 0, True)
+        # close = [-0.9290851950645447, -1.039432168006897, 0.16890758275985718, 1.5707931518554688, -5.7828524404612835e-06, -1.2549126148223877]
+        # duco_cobot.movel(close, 0.2, 0.2, 0, [], "", "", True)
+        # duco_cobot.tcp_move([0, 0, 0.1, 0, 0, 0], 0.2, 0.2, 0, True)
+        pose_j = duco_cobot.get_actual_joints_position()
+        pose = duco_cobot.get_tcp_pose()
+        print("joint", pose_j)
+        print("pose", pose)
+        # Close!
+        duco_cobot.close()
+        # duco_cobot.disable(True)
+        # duco_cobot.power_off(True)
+        # duco_cobot.shutdown(True)
+    except Thrift.TException as tx:
+        print('%s' % tx.message)
+
+    except Exception as e:
+        print(e)
