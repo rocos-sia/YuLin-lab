@@ -190,8 +190,10 @@ def data_key(data):
 
 def callback(flag_0):
     goal1 = AddintsGoal()
+    global param
     goal1.num = param+"!"+str(flag_0)
-
+    print("goal1.num",goal1.num)
+    global key
     if flag_0 <= flag_max[key]:
         client.send_goal(goal1, done_cb, active_cb, feedback_cb)
     else:

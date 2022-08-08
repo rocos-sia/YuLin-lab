@@ -67,7 +67,8 @@ class Myaction:
         try:
             goal = goal.num
             goal_list = goal.split('!')
-            if goal_list[0] == '':
+            print("goal_list",goal_list)
+           if goal_list[0]=='' or goal_list[0]=='query':
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -134,7 +135,9 @@ class Myaction1:
         try:
             goal = goal.num
             goal_list = goal.split('!')
-            if goal_list[0] == '':
+            print("goal_list",goal_list)
+            
+            if goal_list[0]=='' or goal_list[0]=='query':
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -152,6 +155,7 @@ class Myaction1:
             elif goal_num == 2:
                 rospy.loginfo("离心机二维码矫正")
                 self.cen.point()
+
             elif goal_num == 3:
                 rospy.loginfo("按下离心机正面开盖按钮")
                 self.cen.open()
@@ -163,21 +167,22 @@ class Myaction1:
                 self.cen.close_door()
             elif goal_num == 6:
                 rospy.loginfo("按下离心机正面运行按钮")
+                self.cen.start()
             elif goal_num == 7:
                 rospy.loginfo("等待离心机完成操作")
                 time.sleep(param)
             elif goal_num == 8:
                 rospy.loginfo("按下离心机正面开盖按钮")
-                self.cen.open()
+                # self.cen.open()
             elif goal_num == 9:
                 rospy.loginfo("从离心机上取出试管放置到试管架")
-                self.cen.get(model_flag)
+                # self.cen.get(model_flag)
             elif goal_num == 10:
                 rospy.loginfo("关闭离心机盖子")
-                self.cen.close_door()
+                # self.cen.close_door()
             elif goal_num == 11:
                 rospy.loginfo("试管取盖")
-                tube.lidget(model_flag)
+                # tube.lidget(model_flag)
             elif goal_num == 12:
                 rospy.loginfo("机械臂恢复到设置状态")
                 self.cen.again()
@@ -216,7 +221,8 @@ class Myaction2:
         try:
             goal = goal.num
             goal_list = goal.split('!')
-            if goal_list[0] == '':
+            print("goal_list",goal_list)
+           if goal_list[0]=='' or goal_list[0]=='query':
                 param = 0
             else:
                 param = int(goal_list[0])
@@ -275,7 +281,8 @@ class Myaction2_1:
         try:
             goal = goal.num
             goal_list = goal.split('!')
-            if goal_list[0] == '':
+            print("goal_list",goal_list)
+            if goal_list[0]=='' or goal_list[0]=='query':
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -329,7 +336,8 @@ class Myaction3:
         try:
             goal = goal.num
             goal_list = goal.split('!')
-            if goal_list[0] == '':
+            print("goal_list",goal_list)
+            if goal_list[0]=='' or goal_list[0]=='query':
                 param = 6
             else:
                 param = int(goal_list[0])
@@ -367,15 +375,15 @@ class Myaction3:
                 time.sleep(param)
             elif goal_num == 9:
                 rospy.loginfo("打开烘干机门90度")
-                self.dry.open_door()
+                # self.dry.open_door()
             elif goal_num == 10:
                 rospy.loginfo("试管架放置到小车")
-                self.dry.tubejia_get()
+                # self.dry.tubejia_get()
             elif goal_num == 11:
                 rospy.loginfo("夹持机构夹紧试管架")
             elif goal_num == 12:
                 rospy.loginfo("关闭烘干机的门")
-                self.dry.close_door()
+                # self.dry.close_door()
             elif goal_num == 13:
                 self.dry.again()
                 duco_cobot.movej(midpose, 50, 10, 0, True)
@@ -412,7 +420,8 @@ class Myaction4:
             # 解析目标值
             goal = goal.num
             goal_list = goal.split('!')
-            if goal_list[0] == '':
+            print("goal_list",goal_list)
+            if goal_list[0]=='' or goal_list[0]=='query':
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -478,7 +487,8 @@ class Myaction5:
         try:
             goal = goal.num
             goal_list = goal.split('!')
-            if goal_list[0] == '':
+            print("goal_list",goal_list)
+            if goal_list[0]=='' or goal_list[0]=='query':
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -540,7 +550,7 @@ class Myaction7:
        
         goal=goal.num
         goal_list=goal.split('!')
-        if goal_list[0]=='' :
+        if goal_list[0]=='' or goal_list[0]=='query':
             param=5
         else:
             param=int(goal_list[0])
@@ -590,7 +600,8 @@ class Myaction8:
         
         goal=goal.num
         goal_list=goal.split('!')
-        if goal_list[0]=='' :
+        print("goal_list",goal_list)
+        if goal_list[0]=='' or goal_list[0]=='query':
             param=1
         else:
             param=int(goal_list[0])
