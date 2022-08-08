@@ -7,17 +7,20 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Pose
 
 import Translate as T
-
 sys.path.append('gen_py')
 sys.path.append('lib')
+##更改：
+##
 from DucoCobot import DucoCobot
 
 # Connect!
 ip = '192.168.1.10'
-duco_cobot = DucoCobot(ip, 7003)
+reu = duco_cobot = DucoCobot(ip, 7003)
+print("~~~~~~~~~`",reu)
 duco_cobot.open()
 duco_cobot.power_on(True)
 duco_cobot.enable(True)
+
 
 
 class aruco:
@@ -25,13 +28,13 @@ class aruco:
         # 标志位
         self.mark_flag = 0  # 累加标志位
         self.pose_flag = Pose()  # 累加位姿
-        self.div = 100  # 识别50次动一次
-        self.cout = 400  # 总的识别次数
+        self.div = 100  # 识别100次动一次
+        self.cout = 500  # 总的识别次数
 
         # test标志位
         self.mark_num = 0  # 累加标志位
         self.pose_num = Pose()  # 累加位姿
-        self.num = 60  # 识别次数
+        self.num = 80  # 识别次数
         self.mark2camera = 0  # 返回值
 
     def mark_callback(self, data):
@@ -87,7 +90,8 @@ class aruco:
             data = rospy.wait_for_message("aruco_single/pose", PoseStamped)
             self.mark_callback(data)
             i = i + 1
-        print("二维码识别完成")
+        cur_joint = duco_cobot.get_actual_joints_position()
+        print("二维码识别完成,当前关节角为",cur_joint)
 
     # test
     def test_callback(self, data):
@@ -120,3 +124,4 @@ class aruco:
             i = i + 1
         print("二维码识别完成")
         return self.mark2camera
+        
