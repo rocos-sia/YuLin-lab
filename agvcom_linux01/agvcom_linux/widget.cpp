@@ -89,8 +89,6 @@ void Widget::on_pushButton_2_clicked()//开始导航,请先确定切换到自动
     int result_send_way_point = xNETDRIVER::SendWayPoint(&m_LinkParam, &send_way_point);
     qDebug()<<result_send_way_point;
 }
-//充电操作需要先发送指令到充电点位，然后在执行此操作
-
 
 //void Widget::on_lineEdit_cursorPositionChanged(int arg1, int arg2)
 //{

@@ -34,9 +34,6 @@ int main(int argc, char *argv[])
         m_LinkParam.srcObjID = 0x92;
         m_LinkParam.dstObjID = 0x92;
         m_LinkParam.byDstLinkID = 0x14;
-
-
-
         int sockfd;
         char buff_res[4096];
         std::string sendline;
@@ -64,11 +61,17 @@ int main(int argc, char *argv[])
         double *jot_pos_ptr{nullptr};
 
 
-         //** 发送消息 **//
+        // //** 发送消息 **//
   while(1)
   {
         memset(recv_buf, 0, sizeof(recv_buf)); //清空
         ssize_t rr=recv(sockfd, recv_buf, MAXLINE, 0);
+        if(rr <= 0 )  
+        {
+            // qDebug<<"服务器断开连接";
+            close( sockfd );  //! TCP 连接失败，应该关闭，不然再次发送，程序奔溃
+            return -1;
+        }
 //        qDebug()<<recv(sockfd, recv_buf, MAXLINE, 0);
 //        qDebug()<<recv_buf;
         if (recv_buf[0]=='0')
@@ -119,7 +122,18 @@ int main(int argc, char *argv[])
         }
 
     }
+        // {
+        //     printf( "send msg error: %s(errno: %d)\n", strerror( errno ), errno );
+        //     return 0;
+        // }
+        // **-------------------------------**//
+
+        //**接受消息 **//
+
+        // std::cout <<recv(sockfd, recv_buf, MAXLINE, 0)<< std::endl;
 
 
+//        qDebug()<< QDir::currentPath();
+//        return a.exec();
 
 }

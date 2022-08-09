@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 //        qDebug()<<recv(sockfd, recv_buf, MAXLINE, 0);
         if (recv_buf[0]=='0')
         {
-            qDebug()<<"2";
+            // qDebug()<<"2";
             QString a;
             DEFINE_STRUCT_AND_INIT(xNETDRIVER::ROBOT_STATE_RECV_FMT, robot_state);
             int result_robot_state = xNETDRIVER::GetRobotState(&m_LinkParam, &robot_state);
@@ -128,14 +128,21 @@ int main(int argc, char *argv[])
                {
                  send_way_point.PointName[i] = targetArr[i];
                }
-                int result_send_way_point = xNETDRIVER::SendWayPoint(&m_LinkParam, &send_way_point);
-
+               int result_send_way_point = xNETDRIVER::SendWayPoint(&m_LinkParam, &send_way_point);
                 DEFINE_STRUCT_AND_INIT(xNETDRIVER::ROBOT_STATE_RECV_FMT, robot_state);
-                int result_robot_state = xNETDRIVER::GetRobotState(&m_LinkParam, &robot_state);
-                while(robot_state.byTaskState!=4)
+               int result_robot_state = xNETDRIVER::GetRobotState(&m_LinkParam, &robot_state);
+               while (robot_state.dwGoalID!=id)
+               {
+                int result_send_way_point = xNETDRIVER::SendWayPoint(&m_LinkParam, &send_way_point);
+                DEFINE_STRUCT_AND_INIT(xNETDRIVER::ROBOT_STATE_RECV_FMT, robot_state);
+                qDebug()<<"robot_state.dwGoalID!=id";
+                result_robot_state = xNETDRIVER::GetRobotState(&m_LinkParam, &robot_state);
+                sleep(1);
+               }
+                while(robot_state.byTaskState!=4 )
                 {
                    result_robot_state = xNETDRIVER::GetRobotState(&m_LinkParam, &robot_state);
-                   qDebug()<<"wait";
+                   qDebug()<<"Navigiation";
                    sleep(3);
                 }
                 sendline="00";
