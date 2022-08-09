@@ -56,8 +56,9 @@ def mark_size(size):
     param = rospy.get_param("/aruco_single/marker_size")
     while param != size:
         rospy.set_param("/aruco_single/marker_size", size)
-        param = rospy.get_param("/aruco_single/marker_size")
         sleep(1)
+        param = rospy.get_param("/aruco_single/marker_size")
+        
 
 
 def robotiq(ACT, GTO, PR, ATR, SP, FR):
@@ -831,7 +832,15 @@ class centrifuge(object):
                                   [0.41176459, 0.83076436, -0.37454038, 0.18800396],
                                   [0.20356187, 0.31676363, 0.92640346, 0.12834574],
                                   [0., 0., 0., 1.]])
-        self.key_start = np.array([])  # 启动离心机
+        self.key_start = np.array([[ 0.88828263 ,-0.45767131, -0.03861263 , 0.04077991],
+                                    [ 0.4118243 ,  0.83087261 ,-0.3742345  , 0.19037508],
+                                    [ 0.20335857 , 0.31652438 , 0.92652987 , 0.12419927],
+                                    [ 0.     ,     0.      ,    0.       ,   1.        ]])  # 启动离心机
+
+        self.key_start_mid=np.array([[ 0.88828012, -0.45767738 ,-0.03859853 , 0.04392342],
+                                    [ 0.41183391 , 0.83086667 ,-0.37423711 , 0.22076065],
+                                    [ 0.20335009 , 0.3165312  , 0.92652941  ,0.04898253],
+                                    [ 0.     ,     0.       ,   0.      ,    1.        ]])
         self.axis = np.array([[0.00521612, - 0.9999716, - 0.00543908, - 0.09862462],
                               [0.99987261, 0.0051334, 0.01511309, - 0.17843551],
                               [-0.01508474, - 0.00551722, 0.999871, 0.13328981],
@@ -939,6 +948,10 @@ class centrifuge(object):
         self.pose_aruco2 = duco_cobot.get_tcp_pose()
         self.key_mid = get_t(self.pose_aruco2, self.key_mid)
         self.key_open = get_t(self.pose_aruco2, self.key_open)
+        #启动按键
+        self.key_start=get_t(self.pose_aruco2, self.key_start)
+        self.key_start_mid=get_t(self.pose_aruco2, self.key_start_mid)
+
         self.axis = get_t(self.pose_aruco2, self.axis)
         # 放试管点
         self.putA1 = get_t(self.pose_aruco2, self.putA1)
@@ -982,7 +995,7 @@ class centrifuge(object):
 
     def start(self):
 
-        key(self.key_mid, self.key_start, -10)
+        key(self.key_start_mid, self.key_start, -20)
         print("离心机已启动")
 
     def put(self, test):
@@ -1315,7 +1328,16 @@ class centrifuge(object):
                                   [0.41176459, 0.83076436, -0.37454038, 0.18800396],
                                   [0.20356187, 0.31676363, 0.92640346, 0.12834574],
                                   [0., 0., 0., 1.]])
-        self.key_start = np.array([])  # 启动离心机
+        self.key_start = np.array([[ 0.88828263 ,-0.45767131, -0.03861263 , 0.04077991],
+                                    [ 0.4118243 ,  0.83087261 ,-0.3742345  , 0.19037508],
+                                    [ 0.20335857 , 0.31652438 , 0.92652987 , 0.12419927],
+                                    [ 0.     ,     0.      ,    0.       ,   1.        ]])  # 启动离心机
+
+        self.key_start_mid=np.array([[ 0.88828012, -0.45767738 ,-0.03859853 , 0.04392342],
+                                    [ 0.41183391 , 0.83086667 ,-0.37423711 , 0.22076065],
+                                    [ 0.20335009 , 0.3165312  , 0.92652941  ,0.04898253],
+                                    [ 0.     ,     0.       ,   0.      ,    1.        ]])  # 启动离心机
+
         self.axis = np.array([[0.00521612, - 0.9999716, - 0.00543908, - 0.09862462],
                               [0.99987261, 0.0051334, 0.01511309, - 0.17843551],
                               [-0.01508474, - 0.00551722, 0.999871, 0.13328981],
@@ -2258,34 +2280,60 @@ motor = motor()
 tube = testtube()
 
 # if __name__ == '__main__':
-# #     # 初始化节点
-#     # rospy.init_node('robot')
-#     try:
-#         thd_B = threading.Thread(target=hearthread_fun)
-#         thd_B.daemon = True
-#         thd_B.start()
-#         dry = drying()
 
-#         # wayj = [0.9639929533004761, -0.26671460270881653, -1.3903968334197998, -1.5031213760375977, -0.6077816486358643, 2.361870765686035]
-#         duco_cobot.movej(dry.waypoint1_j, 20, 10, 0, True)
-#         # duco_cobot.movej(dry.jia_j, 20, 10, 0, True)
-#         # pose = duco_cobot.get_tcp_pose()
-#         # pose[2] = 0.32436954975128174
-#         # close = [0.05448080226778984, -0.8755008111000061, 0.34584997177124023, 1.5707937479019165,5.335685727914097e-06, -2.603585720062256]
-#         # duco_cobot.movel(sep.getB3, 0.2, 0.2, 0, [], "", "", True)
-#         # duco_cobot.tcp_move([0, 0, 0.1, 0, 0, 0], 0.2, 0.2, 0, True)
-#         joint = duco_cobot.get_actual_joints_position()
-#         pose = duco_cobot.get_tcp_pose()
-#         print("joint", joint)
-#         print("pose", pose)
-#         # print("force", force)
-#         # Close!
-#         duco_cobot.close()
-#         # duco_cobot.disable(True)
-#         # duco_cobot.power_off(True)
-#         # duco_cobot.shutdown(True)
+# # #     # 初始化节点
+# #     # rospy.init_node('robot')
+#     try:
+#         # key_mid = np.array([[0.88812738, -0.45794297, -0.03896145, 0.06287588],
+#         #                          [0.41193665, 0.83075479, -0.37437238, 0.22213659],
+#         #                          [0.20380861, 0.31644071, 0.92645957, 0.04626311],
+#         #                          [0, 0, 0, 1]])  # 开盖
+#         # key_open = np.array([[0.88826375, -0.45770228, -0.0386799, 0.06150703],
+#         #                           [0.41176459, 0.83076436, -0.37454038, 0.18800396],
+#         #                           [0.20356187, 0.31676363, 0.92640346, 0.12834574],
+#         #                           [0., 0., 0., 1.]])
+#         pose_aruco2=[-0.581345242792104, 0.025191099765841503, 0.8262101416479414, -3.125940594364204, -0.0030067658625620997, 1.5647662897127819]
+        
+#         # key_start_mid=duco_cobot.get_tcp_pose()
+#         # key_start_mid=get_T(pose_aruco2,key_start_mid)
+#         key_start_T=[[ 0.88828263 ,-0.45767131, -0.03861263 , 0.04077991],
+#                         [ 0.4118243 ,  0.83087261 ,-0.3742345  , 0.19037508],
+#                         [ 0.20335857 , 0.31652438 , 0.92652987 , 0.12419927],
+#                         [ 0.     ,     0.      ,    0.       ,   1.        ]]
+#         key_start_mid_T=[[ 0.88828012, -0.45767738 ,-0.03859853 , 0.04392342],
+#                             [ 0.41183391 , 0.83086667 ,-0.37423711 , 0.22076065],
+#                             [ 0.20335009 , 0.3165312  , 0.92652941  ,0.04898253],
+#                             [ 0.     ,     0.       ,   0.      ,    1.        ]]
+#         key_start_mid = get_t(pose_aruco2, key_start_mid_T)
+#         key_start = get_t(pose_aruco2, key_start_T)
+
+#         key(key_start_mid, key_start, -20)
+#         print("盖子已打开")
+
+      
+
+# #         thd_B = threading.Thread(target=hearthread_fun)
+# #         thd_B.daemon = True
+# #         thd_B.start()
+# #         dry = drying()
+
+# #         # wayj = [0.9639929533004761, -0.26671460270881653, -1.3903968334197998, -1.5031213760375977, -0.6077816486358643, 2.361870765686035]
+# #         duco_cobot.movej(dry.waypoint1_j, 20, 10, 0, True)
+# #         # duco_cobot.movej(dry.jia_j, 20, 10, 0, True)
+# #         # pose = duco_cobot.get_tcp_pose()
+# #         # pose[2] = 0.32436954975128174
+# #         # close = [0.05448080226778984, -0.8755008111000061, 0.34584997177124023, 1.5707937479019165,5.335685727914097e-06, -2.603585720062256]
+# #         # duco_cobot.movel(sep.getB3, 0.2, 0.2, 0, [], "", "", True)
+# #         # duco_cobot.tcp_move([0, 0, 0.1, 0, 0, 0], 0.2, 0.2, 0, True)
+# #         joint = duco_cobot.get_actual_joints_position()
+# #         pose = duco_cobot.get_tcp_pose()
+# #         print("joint", joint)
+# #         print("pose", pose)
+# #         # print("force", force)
+# #         # Close!
+# #         duco_cobot.close()
+# #         # duco_cobot.disable(True)
+# #         # duco_cobot.power_off(True)
+# #         # duco_cobot.shutdown(True)
 #     except Thrift.TException as tx:
 #         print('%s' % tx.message)
-
-#     except Exception as e:
-#         print(e)

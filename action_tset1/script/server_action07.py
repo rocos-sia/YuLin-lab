@@ -68,7 +68,9 @@ class Myaction:
             goal = goal.num
             goal_list = goal.split('!')
             print("goal_list",goal_list)
-           if goal_list[0]=='' or goal_list[0]=='query':
+            if goal_list[0]=='' or goal_list[0]=='query':
+                if goal_list[0]=='query':
+                    logger.error("上位机发送query!robotstate!query!robotstate!")
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -138,6 +140,8 @@ class Myaction1:
             print("goal_list",goal_list)
             
             if goal_list[0]=='' or goal_list[0]=='query':
+                if goal_list[0]=='query':
+                    logger.error("上位机发送query!robotstate!query!robotstate!")
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -222,7 +226,9 @@ class Myaction2:
             goal = goal.num
             goal_list = goal.split('!')
             print("goal_list",goal_list)
-           if goal_list[0]=='' or goal_list[0]=='query':
+            if goal_list[0]=='' or goal_list[0]=='query':
+                if goal_list[0]=='query':
+                    logger.error("上位机发送query!robotstate!query!robotstate!")
                 param = 0
             else:
                 param = int(goal_list[0])
@@ -283,6 +289,8 @@ class Myaction2_1:
             goal_list = goal.split('!')
             print("goal_list",goal_list)
             if goal_list[0]=='' or goal_list[0]=='query':
+                if goal_list[0]=='query':
+                    logger.error("上位机发送query!robotstate!query!robotstate!")
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -338,6 +346,8 @@ class Myaction3:
             goal_list = goal.split('!')
             print("goal_list",goal_list)
             if goal_list[0]=='' or goal_list[0]=='query':
+                if goal_list[0]=='query':
+                    logger.error("上位机发送query!robotstate!query!robotstate!")
                 param = 6
             else:
                 param = int(goal_list[0])
@@ -422,6 +432,10 @@ class Myaction4:
             goal_list = goal.split('!')
             print("goal_list",goal_list)
             if goal_list[0]=='' or goal_list[0]=='query':
+                #简单记录后期删除
+                if goal_list[0]=='query':
+                    logger.error("上位机发送query!robotstate!query!robotstate!")
+                #
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -443,8 +457,8 @@ class Myaction4:
                 # 充电
                 data = "21"
                 ttClient.send(data.encode())
-                plat = ttClient.recv(BUFFSIZE).decode()
-                if plat != "00":
+                plat_recharge = ttClient.recv(BUFFSIZE).decode()
+                if plat_recharge != "00":
                     rospy.logerr("Recharge %d", goal_num)
                     assert False
             elif goal_num == 3:
@@ -489,6 +503,8 @@ class Myaction5:
             goal_list = goal.split('!')
             print("goal_list",goal_list)
             if goal_list[0]=='' or goal_list[0]=='query':
+                if goal_list[0]=='query':
+                    logger.error("上位机发送query!robotstate!query!robotstate!")
                 param = 5
             else:
                 param = int(goal_list[0])
@@ -551,6 +567,8 @@ class Myaction7:
         goal=goal.num
         goal_list=goal.split('!')
         if goal_list[0]=='' or goal_list[0]=='query':
+            if goal_list[0]=='query':
+                logger.error("上位机发送query!robotstate!query!robotstate!")
             param=5
         else:
             param=int(goal_list[0])
@@ -602,6 +620,8 @@ class Myaction8:
         goal_list=goal.split('!')
         print("goal_list",goal_list)
         if goal_list[0]=='' or goal_list[0]=='query':
+            if goal_list[0]=='query':
+                logger.error("上位机发送query!robotstate!query!robotstate!")
             param=1
         else:
             param=int(goal_list[0])
@@ -654,10 +674,13 @@ if __name__ == "__main__":
         fh.setFormatter(format)
         # 第四步，将Handler添加至日志记录器logger里
         logger.addHandler(fh)
-        logger.error("程序启动")
+        logger.error("程序启动,记录报错")
+
         motor.motor_position(179000,30)
+        print("电机激活，初始化")
         robotiq(0, 1, 120, 0, 50, 1)
         robotiq(1, 1, 255, 0, 50, 1)
+        print("夹爪初始化")
         rospy.spin()
         # Close!
         duco_cobot.close()

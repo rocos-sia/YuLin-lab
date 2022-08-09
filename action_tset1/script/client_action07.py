@@ -173,11 +173,11 @@ def data_key(data):
     # else:
     length=data.count('!')
     if length>=2:
-        list = data.split('!')
-        if len(list)>3:
+        list_data = data.split('!')
+        if len(list_data)>3:
             global param
-            param = list[2]
-        task=list[1]
+            param = list_data[2]
+        task=list_data[1]
         task_order=["get_sample","centrifuge","seperation_acid","seperation_alkali","put_sample","drying","recharge","poweroff","model","robotstate"]
 
         if task in task_order:
@@ -185,9 +185,8 @@ def data_key(data):
             return task_order.index(task)
     else:
         return "error"
-    # 函数功能：循环发送流程指令直到flag>指令下的流程数
 
-
+# 函数功能：循环发送流程指令直到flag>指令下的流程数
 def callback(flag_0):
     goal1 = AddintsGoal()
     global param
@@ -259,7 +258,9 @@ def thread_fun():
             time.sleep(0.01)
             # global Isruning
             data = tctimeClient.recv(buffsize).decode()
-            print("收到的指令为")
+            print("收到的指令为",data)
+            print("收到的指令为",data)
+            print("收到的指令为",data)
             if not data:
                 break
             global key

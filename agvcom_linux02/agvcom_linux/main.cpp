@@ -78,6 +78,12 @@ int main(int argc, char *argv[])
   {
       memset(recv_buf, 0, sizeof(recv_buf)); //清空
         ssize_t rr=recv(sockfd, recv_buf, MAXLINE, 0);
+        if(rr <= 0 )  
+        {
+            // qDebug<<"服务器断开连接";
+            close( sockfd );  //! TCP 连接失败，应该关闭，不然再次发送，程序奔溃
+            return -1;
+        }
 //        qDebug()<<recv(sockfd, recv_buf, MAXLINE, 0);
         if (recv_buf[0]=='0')
         {
@@ -162,9 +168,12 @@ int main(int argc, char *argv[])
                     memcpy(send_data.value, (unsigned char *)&comm, 2);
                     //写变量
                     xNETDRIVER::RESPONSE ret = SendRequestAndWaitForRecv(&LinkParam, (xNETDRIVER::SERVICE)0x10, (xNETDRIVER::COMMAND)0x01, &send_data, tag_data_size, NULL, 0, 2000);
-                    if (ret != xNETDRIVER::XNET_SUCCESS)
-                    {
-                        qDebug()<<"error";
+                    while (ret != xNETDRIVER::XNET_SUCCESS)
+                    {   
+                        qDebug()<<"再次发送状态位更改指令";
+                        xNETDRIVER::RESPONSE ret = SendRequestAndWaitForRecv(&LinkParam, (xNETDRIVER::SERVICE)0x10, (xNETDRIVER::COMMAND)0x01, &send_data, tag_data_size, NULL, 0, 2000);
+                        sleep(1);
+                        // qDebug()<<"error";
                         //异常记录
                     }
                     sleep(6);
