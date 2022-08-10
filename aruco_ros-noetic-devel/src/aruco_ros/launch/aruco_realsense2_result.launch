@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<launch>
+
+    <arg name="markerId" default="582"/>
+    <!-- <arg name="markerSize" default="0.0247"/>-->
+    <arg name="markerSize" default="0.150"/>
+    <!--<arg name="markerSize" default="0.139"/>-->
+
+    <include file="$(find realsense2_camera)/launch/rs_camera.launch">
+    </include>
+
+    <include file="$(find aruco_ros)/launch/single_realsense.launch">
+        <arg name="markerId" default="$(arg markerId)"/>
+        <arg name="markerSize" default="$(arg markerSize)"/>
+    </include>
+
+    <!-- <node pkg="image_view" type="image_view" name="image_view" args="image:=/aruco_single/result">
+    </node>-->
+
+
+</launch>
+

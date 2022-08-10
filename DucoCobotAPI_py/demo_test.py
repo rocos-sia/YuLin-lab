@@ -26,17 +26,16 @@ duco_cobot.enable(True)
 class aruco:
     def __init__(self):
         # 标志位
-        self.mark_flag = 0  # 识别累加标志位
+        self.mark_flag = 0  # 累加标志位
         self.pose_flag = Pose()  # 累加位姿
         self.div = 100  # 识别100次动一次
-        self.cout = 0  # 机械臂移动次数累加标志位
-        self.end = 5  # 机械臂总的移动次数
+        self.cout = 500  # 总的识别次数
 
         # test标志位
         self.mark_num = 0  # 累加标志位
         self.pose_num = Pose()  # 累加位姿
         self.num = 80  # 识别次数
-        self.mark2camera = []  # 返回值
+        self.mark2camera = 0  # 返回值
 
     def mark_callback(self, data):
         # 累加
@@ -82,32 +81,17 @@ class aruco:
             self.pose_flag.orientation.w = 0
             sleep(0.5)
 
-            self.cout += 1
-
-        if self.cout == self.end:
-            self.cout = 0
-            return 1
-        else:
-            return 0
-
-    def mark(self, aruco_id):
+    def mark(self):
 
         print("recognize aruco")
         # 订阅话题，矫正4次
-        while True:
+        i = 0
+        while i < self.cout:
             data = rospy.wait_for_message("aruco_single/pose", PoseStamped)
-            # print(data.header.stamp.secs)
-            # print(type(data.header.stamp.secs))
-            if data.header.stamp.secs == aruco_id:
-                # print(data.header.stamp.secs)
-                # print(type(data.header.stamp.secs))
-                ret = self.mark_callback(data)
-                if ret == 1:
-                    print("二维码识别完成")
-                    break
-            else:
-                print("识别到错误的aruco码")
-                sleep(0.2)
+            self.mark_callback(data)
+            i = i + 1
+        cur_joint = duco_cobot.get_actual_joints_position()
+        print("二维码识别完成,当前关节角为",cur_joint)
 
     # test
     def test_callback(self, data):
@@ -128,26 +112,21 @@ class aruco:
             self.pose_num.orientation.z = 0
             self.pose_num.orientation.w = 0
             return mark2camera
-        return []
 
-    def test_mark(self, aruco_id):
+    def test_mark(self):
+
         print("recognize aruco")
         # 识别固定次数
-        while True:
+        i = 0
+        while i < self.num:
             data = rospy.wait_for_message("aruco_single/pose", PoseStamped)
-            if data.header.stamp.secs == aruco_id:
-                self.mark2camera = self.test_callback(data)
-                if len(self.mark2camera) != 0:
-                    print("二维码识别完成")
-                    break
-            else:
-                print("识别到错误的aruco码")
-                sleep(0.2)
+            self.mark2camera = self.test_callback(data)
+            i = i + 1
+        print("二维码识别完成")
         return self.mark2camera
+
 
 if __name__ == '__main__':
     rospy.init_node("aruco")
     aruco=aruco()
-    aruco.mark(582)
-
-        
+    aruco.mark()

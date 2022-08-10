@@ -668,7 +668,7 @@ class getsample(object):
         duco_cobot.movej(self.pose_aruco2_j1, speedj, 20, 0, True)
         duco_cobot.movej(self.pose_aruco2_j2, speedj - 30, 20, 0, True)
         sleep(0.5)
-        aruco.mark(580)
+        aruco.mark()
         # 计算示教点
         self.pose_aruco2 = duco_cobot.get_tcp_pose()
         self.getA1 = get_t(self.pose_aruco2, self.getA1)
@@ -942,7 +942,7 @@ class centrifuge(object):
         duco_cobot.movej(aruco_way, speedj, 10, 0, True)
         # 定位
         sleep(0.5)
-        aruco.mark(582)
+        aruco.mark()
         sleep(0.5)
         # 计算示教点
         self.pose_aruco2 = duco_cobot.get_tcp_pose()
@@ -1006,7 +1006,7 @@ class centrifuge(object):
         duco_cobot.movel(self.watch_aruco_pose, speedl - 0.1, 0.2, 0, [], "", "", True)
         # 求旋转角度
         mark_size(0.0278)
-        mark2camera = aruco.test_mark(582)
+        mark2camera = aruco.test_mark()
         # 计算旋转角度
         diff = mark2camera[2] - self.mark2camera[2]
         self.watch_aruco_pose[2] += 0.25
@@ -1140,7 +1140,7 @@ class centrifuge(object):
         # 求旋转角度
         mark_size(0.0278)
         sleep(0.5)
-        mark2camera = aruco.test_mark(582)
+        mark2camera = aruco.test_mark()
         # 计算旋转角度
         diff = mark2camera[2] - self.mark2camera[2]
         self.watch_aruco_pose[2] += 0.25
@@ -1474,7 +1474,7 @@ class seperation(object):
                           1.5594215393066406, -0.573725163936615], speedj, 10, 0, True)
         # 定位
         sleep(0.5)
-        aruco.mark(582)
+        aruco.mark()
         sleep(0.5)
         # 计算示教点
         self.pose_aruco2 = duco_cobot.get_tcp_pose()
@@ -1706,7 +1706,7 @@ class drying(object):
         duco_cobot.movej(self.watch_aruco_j, speedj - 30, 10, 0, True)
         sleep(1)
         # 定位
-        aruco.mark(587)
+        aruco.mark()
         sleep(1)
         # 计算示教点
         self.pose_aruco2 = duco_cobot.get_tcp_pose()
@@ -2118,7 +2118,7 @@ class putsample(object):
         duco_cobot.movej(self.pose_aruco2_j1, speedj, 20, 0, True)
         duco_cobot.movej(self.pose_aruco2_j2, speedj - 40, 20, 0, True)
         sleep(0.5)
-        aruco.mark(580)
+        aruco.mark()
         # 计算示教点
         self.pose_aruco2 = duco_cobot.get_tcp_pose()
         self.getA1 = get_t(self.pose_aruco2, self.getA1)

@@ -15,19 +15,21 @@ from thrift import Thrift
 ip = '192.168.1.10'
 stopheartthread = False
 
-while True:
-    try:
-        print("connect the arm")
-        duco_cobot = DucoCobot(ip, 7003)
-        duco_cobot.open()
-        time.sleep(5)
-        array=duco_cobot.get_robot_state()
-        if array[0]==6:
-            break
-        print("connect success")
-    except:
-        print("wait for a moment")
-        time.sleep(5)
+
+try:
+    print("connect the arm")
+    duco_cobot = DucoCobot(ip, 7003)
+    duco_cobot.open()
+    duco_cobot.power_on(True)
+    duco_cobot.enable(True)
+    # time.sleep(5)
+    # array=duco_cobot.get_robot_state()
+    # if array[0]==6:
+    #     break
+    print("connect success")
+except:
+    print("wait for a moment")
+    time.sleep(5)
       
 print("continue ")       
 

@@ -1,0 +1,16 @@
+<launch>
+    <arg name="markerId" default="582"/>
+    <!-- <arg name="markerSize" default="0.0247"/>-->
+    <arg name="markerSize" default="0.150"/>
+    <!--<arg name="markerSize" default="0.139"/>-->
+
+    <node pkg="robotiq_2f_gripper_control" type="Robotiq2FGripperRtuNode.py" name="Robotiq2FGripperRtuNode"  args="/dev/robotiq">
+    </node>
+
+    <include file="$(find aruco_ros)/launch/aruco_realsense2_result.launch">
+        <arg name="markerId" default="$(arg markerId)"/>
+        <arg name="markerSize" default="$(arg markerSize)"/>
+    </include>
+
+</launch>
+
