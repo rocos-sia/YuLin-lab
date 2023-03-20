@@ -1,5 +1,6 @@
 #目标数据变量
-int32 num
+#int32 num
+string num
 ---
 #最终响应变量
 int32 result

@@ -30,14 +30,14 @@ key = 0  # 指令：0->取样品,1->离心操作,2->固液分离,3->烘干操作
 list_key = []  # 存放已经接收成功的指令
 quary = ''
 param=''
-model_send='1'
+model_send='0'#模式0代表参观，1代表完整
 # 通信
 duco_cobot = DucoCobot('192.168.1.10', 7003)
 duco_cobot.open()
 duco_cobot.power_on(True)
 duco_cobot.enable(True)
 print("机械臂连接成功")
-host = '192.168.224.6'
+host = '192.168.224.7'
 port = 50000
 buffsize = 2048
 ADDR = (host, port)
@@ -129,7 +129,7 @@ def sequence(key, list_1):
     elif key == 9:
 
         # Connect!
-        filename = '/home/sia/YuLin_lab/src/action_tset1/' + str(datetime.now().date().isoformat()) + '.log'
+        filename = '/home/sia/YuLin_lab/src/action_tset1/' + str(datetime.now().date().isoformat()) + 'error.log'
         arr1= read_log(filename)
         
         data1 = rospy.wait_for_message("Robotiq2FGripperRobotInput", inputMsg.Robotiq2FGripper_robot_input)

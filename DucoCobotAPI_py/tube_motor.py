@@ -4,7 +4,7 @@
 # -*- coding: UTF-8 -*-
 import serial #导入模块
 import time
-import timeout_decorator
+# import timeout_decorator
 import time
 import math
 class motor:
@@ -80,7 +80,7 @@ class motor:
                        
                         data_end=int(data4+data3+data2+data1,16)
                         
-                        if data_end>380 and data_end<100000:
+                        if data_end>600 and data_end<100000:
                             # print(data_end)
                             stop_bit_1=self.setpos(0, 0, 0, 0)
                             result=ser.write(bytearray(power_on))#

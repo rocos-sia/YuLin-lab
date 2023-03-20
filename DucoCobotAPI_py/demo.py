@@ -5,33 +5,58 @@ from DucoCobot import DucoCobot
 import sys
 import threading
 import time
-
+import logging
 from DucoCobot import DucoCobot
-
+import datetime
 sys.path.append('gen_py')
 sys.path.append('lib')
 from thrift import Thrift
 
-ip = '192.168.1.10'
-stopheartthread = False
-
-
-try:
-    print("connect the arm")
-    duco_cobot = DucoCobot(ip, 7003)
-    duco_cobot.open()
-    duco_cobot.power_on(True)
-    duco_cobot.enable(True)
-    # time.sleep(5)
-    # array=duco_cobot.get_robot_state()
-    # if array[0]==6:
-    #     break
-    print("connect success")
-except:
-    print("wait for a moment")
-    time.sleep(5)
-      
-print("continue ")       
+if __name__ == "__main__":
+    ##日志记录
+    logger_debug=logging.getLogger()
+    logger_debug.setLevel(logging.DEBUG)  
+    logger_deugFile = (
+                "/home/sia/YuLin_lab/src/action_tset1/"
+                + str(datetime.datetime.now().date().isoformat())
+                + "debug.log"
+            )
+    fh_debug=logging.FileHandler(logger_deugFile, mode="a", encoding="utf-8")
+    fh_debug.setLevel(logging.DEBUG)
+    format = logging.Formatter(
+                "%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s"
+            )
+    fh_debug.setFormatter(format)
+    logger_debug.addHandler(fh_debug)
+    ##机械臂状态启动检测
+    ip = '192.168.1.10'
+    stopheartthread = False
+    i=0
+    while(i<5):
+        try:
+            print("connect the arm")
+            duco_cobot = DucoCobot(ip, 7003)
+            duco_cobot.open()
+            duco_cobot.power_on(True)
+            duco_cobot.enable(True)
+            i=i+1
+            array=duco_cobot.get_robot_state()
+            if array[0]==6:
+                print("机械臂状态正确，连接成功")
+                logger_debug.debug("机械臂状态正确，连接成功")
+                break
+            
+        except:
+            logger_debug.debug("wait for a moment")
+            time.sleep(5)
+    if (i<5 ):  
+        logger_debug.debug("continue ") 
+    elif(i==5):
+        logger_debug.debug("5次读取状态失败，需要人工干预")      
+        assert False
+    else:
+        logger_debug.debug("意外情况产生，日志记录")      
+        assert False
 
 # def hearthread_fun():
 #     duco_heartbeat = DucoCobot(ip, 7003)

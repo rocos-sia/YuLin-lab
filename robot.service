@@ -1,0 +1,16 @@
+[Unit]
+Description=robot start
+ConditionFileIsExecutable=/home/sia/robot
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/home/sia/robot
+TimeoutSec=30
+Restart=no
+User=sia
+
+[Install]
+WantedBy=multi-user.target
+
+

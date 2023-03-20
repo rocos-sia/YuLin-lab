@@ -170,6 +170,10 @@ catkin_install_python(PROGRAMS
   script/client_action07.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
+catkin_install_python(PROGRAMS
+  script/client_action08.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 # catkin_install_python(PROGRAMS
 #   script/UR_test.py

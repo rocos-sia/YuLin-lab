@@ -1,1 +1,0 @@
-/home/sun/yulin/sia/src/YuLin-lab/aruco_ros-noetic-devel/aruco_ros/devel/.private/catkin_tools_prebuild/local_setup.bash
